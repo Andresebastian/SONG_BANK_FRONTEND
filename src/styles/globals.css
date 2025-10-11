@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-terracota: #D2691E;
+  --color-terracota-light: #E67E22;
+  --color-terracota-dark: #B8651A;
+  --color-terracota-darker: #A0522D;
+  --color-blanco: #FFFFFF;
+  --color-blanco-soft: #FEFEFE;
+}
+
+body {
+  background-color: var(--color-blanco);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Estilos personalizados para mejor apariencia */
+.terracota-gradient {
+  background: linear-gradient(135deg, var(--color-terracota-light) 0%, var(--color-terracota-dark) 100%);
+}
+
+.terracota-shadow {
+  box-shadow: 0 10px 25px rgba(210, 105, 30, 0.2);
+}
