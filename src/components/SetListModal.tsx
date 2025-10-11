@@ -165,19 +165,19 @@ export default function SetListModal({
     setSelectedSongs(updatedSongs);
   };
 
-  // Mover canción en el orden
-  const moveSong = (fromIndex: number, toIndex: number) => {
-    const newSongs = [...selectedSongs];
-    const [movedSong] = newSongs.splice(fromIndex, 1);
-    newSongs.splice(toIndex, 0, movedSong);
-    
-    // Actualizar el orden
-    const updatedSongs = newSongs.map((song, index) => ({
-      ...song,
-      order: index + 1
-    }));
-    setSelectedSongs(updatedSongs);
-  };
+  // Mover canción en el orden (función reservada para futura implementación de drag & drop)
+  // const moveSong = (fromIndex: number, toIndex: number) => {
+  //   const newSongs = [...selectedSongs];
+  //   const [movedSong] = newSongs.splice(fromIndex, 1);
+  //   newSongs.splice(toIndex, 0, movedSong);
+  //   
+  //   // Actualizar el orden
+  //   const updatedSongs = newSongs.map((song, index) => ({
+  //     ...song,
+  //     order: index + 1
+  //   }));
+  //   setSelectedSongs(updatedSongs);
+  // };
 
   // Cambiar tonalidad de una canción
   const changeTransposeKey = (songId: string, newKey: string) => {
@@ -428,7 +428,7 @@ export default function SetListModal({
                   <div className="space-y-3">
                     {selectedSongs
                       .sort((a, b) => a.order - b.order)
-                      .map((songInSet, index) => {
+                      .map((songInSet) => {
                         // En modo view/edit, usar la información completa del setList original
                         let song: Song | undefined;
                         if (mode === "view" || mode === "edit") {

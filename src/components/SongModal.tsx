@@ -1,17 +1,35 @@
 import React, { useState } from "react";
 
-interface SongModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (song: any) => void;
-  song?: any; // Para modo edición
-  mode?: 'create' | 'edit';
-}
-
 interface LyricLine {
   text: string;
   chords: { note: string; index: number }[];
   section?: string;
+}
+
+interface Song {
+  _id?: string;
+  title: string;
+  artist: string;
+  key: string;
+  notes?: string;
+  lyricsLines?: LyricLine[];
+}
+
+interface SongData {
+  title?: string;
+  artist?: string;
+  key?: string;
+  lyricsLines?: LyricLine[];
+  notes?: string;
+  chordProText?: string;
+}
+
+interface SongModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (song: SongData) => void;
+  song?: Song;
+  mode?: 'create' | 'edit';
 }
 
 export default function SongModal({ isOpen, onClose, onSave, song, mode = 'create' }: SongModalProps) {
@@ -54,8 +72,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     }
   }, [isOpen, mode, song]);
 
-  const [currentLine, setCurrentLine] = useState(0);
-  // Cambiar a un estado que mantenga el acorde actual por línea
+  // Estado que mantenga el acorde actual por línea
   const [currentChords, setCurrentChords] = useState<{ [key: number]: { note: string; index: number } }>({});
 
   const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -104,7 +121,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     // Agrupar líneas por sección
     const sections: { [key: string]: typeof lyricsLines } = {};
     lyricsLines.forEach(line => {
-      const section = (line as any).section || 'verse';
+      const section = line.section || 'verse';
       if (!sections[section]) {
         sections[section] = [];
       }

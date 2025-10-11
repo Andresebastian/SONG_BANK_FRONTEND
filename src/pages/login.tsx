@@ -23,7 +23,7 @@ export default function Login() {
       } else {
         setError(res.message || "Error al iniciar sesión");
       }
-    } catch (error) {
+    } catch {
       setError("Error de conexión. Intenta nuevamente.");
     }
   };

@@ -40,8 +40,10 @@ export default function LayoutDashboard({ children }: { children: React.ReactNod
         <div className="p-4 border-t border-blanco/20">
           <button 
             onClick={() => {
-              localStorage.removeItem('token');
-              window.location.href = '/login';
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+              }
             }}
             className="w-full bg-blanco/20 text-blanco px-4 py-2 rounded-xl hover:bg-blanco/30 transition-all duration-200"
           >

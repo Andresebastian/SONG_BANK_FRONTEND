@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../components/LayoutDashboard";
 import SongModal from "../../components/SongModal";
@@ -11,16 +11,37 @@ interface Song {
   key: string;
 }
 
+interface SongData {
+  title?: string;
+  artist?: string;
+  key?: string;
+  lyricsLines?: {
+    text: string;
+    chords: { note: string; index: number }[];
+    section?: string;
+  }[];
+  notes?: string;
+  chordProText?: string;
+}
+
 export default function SongsPage() {
-  const token = localStorage.getItem("token");
   const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const loadSongs = async () => {
+  // Obtener token del localStorage solo en el cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setToken(localStorage.getItem("token"));
+    }
+  }, []);
+
+  const loadSongs = useCallback(async () => {
+    if (!token) return; // No cargar si no hay token
+    
     try {
       const res = await fetch(`/songs`, {
         headers: {
@@ -38,28 +59,36 @@ export default function SongsPage() {
     } catch (error) {
       console.error("Error loading songs:", error);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     loadSongs();
-  }, []);
+  }, [loadSongs]); // Ejecutar cuando el token esté disponible
 
-  const handleCreateSong = async (songData: any) => {
-    setLoading(true);
+  const handleCreateSong = async (songData: SongData) => {
     try {
       // Verificar si es formato ChordPro
       if (songData.chordProText) {
         await createSongChordPro(songData.chordProText);
       } else {
-        await createSong(songData);
+        // Validar que los campos requeridos estén presentes
+        if (!songData.title || !songData.artist || !songData.key || !songData.lyricsLines) {
+          alert("Por favor completa todos los campos requeridos.");
+          return;
+        }
+        await createSong({
+          title: songData.title,
+          artist: songData.artist,
+          key: songData.key,
+          lyricsLines: songData.lyricsLines,
+          notes: songData.notes
+        });
       }
       await loadSongs(); // Recargar la lista de canciones
       alert("¡Canción creada exitosamente!");
     } catch (error) {
       console.error("Error creating song:", error);
       alert("Error al crear la canción. Inténtalo de nuevo.");
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../../components/LayoutDashboard";
 import { getEvent, getSong, transposeSong, updateSong, updateSongChordPro } from "../../../utils/api";
@@ -63,13 +63,7 @@ export default function EventDetailPage() {
   const [transposing, setTransposing] = useState(false);
   const [songDetails, setSongDetails] = useState<{[key: string]: {title: string, artist: string}}>({});
 
-  useEffect(() => {
-    if (id) {
-      loadEvent();
-    }
-  }, [id]);
-
-  const loadEvent = async () => {
+  const loadEvent = useCallback(async () => {
     try {
       const data = await getEvent(id as string);
       setEvent(data);
@@ -99,7 +93,13 @@ export default function EventDetailPage() {
       console.error("Error loading event:", error);
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadEvent();
+    }
+  }, [id, loadEvent]);
 
   const handleSelectSong = async (songId: string, transposeKey: string) => {
     // Si se hace click en la misma canción, colapsar (cerrar)
@@ -331,7 +331,7 @@ export default function EventDetailPage() {
           <div className="space-y-3">
             {event.setId.songs
               .sort((a, b) => a.order - b.order)
-              .map((songInSet, index) => {
+              .map((songInSet) => {
                 const songInfo = songDetails[songInSet.songId];
                 const isSelected = selectedSongId === songInSet.songId;
                 

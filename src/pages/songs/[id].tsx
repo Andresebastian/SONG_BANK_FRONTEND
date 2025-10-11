@@ -2,7 +2,6 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getSong, transposeSong, updateSong, updateSongChordPro } from "utils/api";
 import LayoutDashboard from "../../components/LayoutDashboard";
 import SongModal from "../../components/SongModal";
@@ -37,14 +36,22 @@ export default function SongDetail() {
   useEffect(() => {
     if (id) {
       getSong(id as string)
-        .then((data) => {
+        .then(async (data) => {
           setSong(data); // aquí ya tienes la canción
           setLoading(false);
           
           // Si viene desde un evento con una tonalidad específica, aplicarla automáticamente
           if (targetKey && targetKey !== data.key) {
             console.log(`Aplicando tonalidad del evento: ${targetKey} (original: ${data.key})`);
-            handleTranspose(targetKey);
+            try {
+              setTransposing(true);
+              const updatedSong = await transposeSong(id as string, targetKey);
+              setSong(updatedSong);
+            } catch (error) {
+              console.error('Error al cambiar tonalidad:', error);
+            } finally {
+              setTransposing(false);
+            }
           }
         })
         .catch((err) => {

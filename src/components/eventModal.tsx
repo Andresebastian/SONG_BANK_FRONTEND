@@ -97,7 +97,15 @@ export default function EventModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [description, setDescription] = useState("");
-  const token = localStorage.getItem("token");
+  const [token, setToken] = useState<string | null>(null);
+  
+  // Obtener token del localStorage solo en el cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setToken(localStorage.getItem("token"));
+    }
+  }, []);
+
   useEffect(() => {
     // Cargar todas las canciones para poder mostrarlas en los setlists
     if (token) {
