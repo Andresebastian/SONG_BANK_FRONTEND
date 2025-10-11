@@ -14,13 +14,9 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        "source": "/api/(.*)",
-        "destination": "https://superior-peafowl-andresorganization-15ad7cc7.koyeb.app/$1"
-      },
-      {
-        "source": "/(.*)",
-        "destination": "/"
-      },
+        "source": "/api/:path*",
+        "destination": "https://superior-peafowl-andresorganization-15ad7cc7.koyeb.app/:path*"
+      }
     ];
   }
 };
@@ -38,4 +34,4 @@ const eslintConfig = [
   },
 ];
 
-export default withNextConfig;
+export default nextConfig;
