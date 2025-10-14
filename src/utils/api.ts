@@ -21,7 +21,7 @@ const getAuthHeaders = (): Record<string, string> => {
 };
 
 export const registerUser = async (data: { name: string; email: string; password: string; roleId: string }) => {
-  const res = await fetch(`/auth/register`, {
+  const res = await fetch(`/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -30,7 +30,7 @@ export const registerUser = async (data: { name: string; email: string; password
 };
 
 export const loginUser = async (data: { email: string; password: string }) => {
-  const res = await fetch(`/auth/login`, {
+  const res = await fetch(`/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -39,7 +39,7 @@ export const loginUser = async (data: { email: string; password: string }) => {
 };
 
 export const getRoles = async () => {
-  const res = await fetch(`/roles`, {
+  const res = await fetch(`/api/roles`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -50,7 +50,7 @@ export const getRoles = async () => {
 };
 
 export const getUsers = async () => {
-  const res = await fetch(`/users`, {
+  const res = await fetch(`/api/users`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -58,7 +58,7 @@ export const getUsers = async () => {
 };
 
 export const getDirectors = async () => {
-  const res = await fetch(`/users/directors`, {
+  const res = await fetch(`/api/users/directors`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -66,7 +66,7 @@ export const getDirectors = async () => {
 };
 
 export const getSetLists = async () => {
-  const res = await fetch(`/sets`, {
+  const res = await fetch(`/api/sets`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -83,7 +83,7 @@ export const createEvent = async (data: {
   setId?: string;
   description: string;
 }) => {
-  const res = await fetch(`/events`, {
+  const res = await fetch(`/api/events`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -92,7 +92,7 @@ export const createEvent = async (data: {
 };
 
 export const getEvents = async () => {
-  const res = await fetch(`/events`, {
+  const res = await fetch(`/api/events`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -100,7 +100,7 @@ export const getEvents = async () => {
 };
 
 export const getEvent = async (id: string) => {
-  const res = await fetch(`/events/${id}`, {
+  const res = await fetch(`/api/events/${id}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -117,7 +117,7 @@ export const updateEvent = async (id: string, data: {
   setId?: string;
   description: string;
 }) => {
-  const res = await fetch(`/events/${id}`, {
+  const res = await fetch(`/api/events/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -126,7 +126,7 @@ export const updateEvent = async (id: string, data: {
 };
 
 export const getSong = async (id: string) => {
-  const res = await fetch(`/songs/${id}`, {
+  const res = await fetch(`/api/songs/${id}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -134,7 +134,7 @@ export const getSong = async (id: string) => {
 };
 
 export const transposeSong = async (id: string, newKey: string) => {
-  const res = await fetch(`/songs/${id}/transpose`, {
+  const res = await fetch(`/api/songs/${id}/transpose`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ newKey }),
@@ -152,7 +152,7 @@ export const createSong = async (data: {
   }[];
   notes?: string;
 }) => {
-  const res = await fetch(`/songs`, {
+  const res = await fetch(`/api/songs`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -170,7 +170,7 @@ export const updateSong = async (id: string, data: {
   }[];
   notes?: string;
 }) => {
-  const res = await fetch(`/songs/${id}`, {
+  const res = await fetch(`/api/songs/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -179,7 +179,7 @@ export const updateSong = async (id: string, data: {
 };
 
 export const createSongChordPro = async (chordProText: string) => {
-  const res = await fetch(`/songs/chordpro`, {
+  const res = await fetch(`/api/songs/chordpro`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ chordProText }),
@@ -188,7 +188,7 @@ export const createSongChordPro = async (chordProText: string) => {
 };
 
 export const updateSongChordPro = async (id: string, chordProText: string) => {
-  const res = await fetch(`/songs/${id}/chordpro`, {
+  const res = await fetch(`/api/songs/${id}/chordpro`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify({ chordProText }),

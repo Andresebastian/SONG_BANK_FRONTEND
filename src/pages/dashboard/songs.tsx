@@ -43,7 +43,7 @@ export default function SongsPage() {
     if (!token) return; // No cargar si no hay token
     
     try {
-      const res = await fetch(`/songs`, {
+      const res = await fetch(`/api/songs`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },

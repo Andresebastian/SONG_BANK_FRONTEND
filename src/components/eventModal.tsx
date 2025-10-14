@@ -109,7 +109,7 @@ export default function EventModal({
   useEffect(() => {
     // Cargar todas las canciones para poder mostrarlas en los setlists
     if (token) {
-      fetch("/songs", {
+      fetch("/api/songs", {
         headers: {
           "Authorization": `Bearer ${token}`,
         },

@@ -126,7 +126,7 @@ export default function SetListModal({
       if (searchArtist) params.append('artist', searchArtist);
       if (searchKey) params.append('key', searchKey);
 
-      const response = await fetch(`/songs/search/advanced?${params.toString()}`, {
+      const response = await fetch(`/api/songs/search/advanced?${params.toString()}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
@@ -213,8 +213,8 @@ export default function SetListModal({
       };
 
       const url = mode === "edit" 
-        ? `/set/${setList?._id}`
-        : `/sets`;
+        ? `/api/set/${setList?._id}`
+        : `/api/sets`;
       
       const method = mode === "edit" ? "PUT" : "POST";
 

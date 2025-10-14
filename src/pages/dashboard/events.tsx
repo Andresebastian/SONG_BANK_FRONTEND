@@ -60,7 +60,7 @@ export default function EventsPage() {
     } catch (error) {
       console.error("Error loading events:", error);
       // Fallback to direct fetch if API fails
-      fetch(`/events`, {
+      fetch(`/api/events`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },

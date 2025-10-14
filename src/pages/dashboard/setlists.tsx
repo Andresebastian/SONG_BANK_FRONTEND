@@ -73,7 +73,7 @@ export default function SetListsPage() {
     console.log("Cargando setlists desde:", `/sets`);
     
     try {
-      const response = await fetch(`/sets`, {
+      const response = await fetch(`/api/sets`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
