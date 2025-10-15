@@ -12,6 +12,8 @@
 body {
   background-color: var(--color-blanco);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Estilos personalizados para mejor apariencia */
@@ -21,4 +23,54 @@ body {
 
 .terracota-shadow {
   box-shadow: 0 10px 25px rgba(210, 105, 30, 0.2);
+}
+
+/* Mejoras para móviles */
+@media (max-width: 768px) {
+  /* Mejorar el scroll en móviles */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Evitar zoom en inputs en iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px;
+  }
+  
+  /* Mejorar el área de toque en móviles */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimizar el espaciado en móviles */
+  .mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Utilidades para truncar texto */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mejorar la experiencia de scroll */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Estilos para mejorar la accesibilidad táctil */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

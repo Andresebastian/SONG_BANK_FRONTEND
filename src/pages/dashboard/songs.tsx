@@ -107,70 +107,72 @@ export default function SongsPage() {
   return (
     <LayoutDashboard>
       {/* Header con título y botón de acción */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Banco de Canciones</h1>
-          <p className="text-gray-600">Selecciona las canciones para el servicio del domingo</p>
-        </div>
-        <div className="flex gap-3">
-          {songs.length > 0 && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-terracota text-blanco px-6 py-3 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200"
-            >
-              ➕ Crear Nueva Canción
-            </button>
-          )}
-          {selected.length > 0 && (
-            <button
-              onClick={() =>
-                alert(`Guardando ${selected.length} canción(es) en el domingo...`)
-              }
-              className="bg-blue-500 text-blanco px-6 py-3 rounded-xl font-semibold shadow-lg hover:bg-blue-600 transform hover:scale-105 transition-all duration-200"
-            >
-              🎵 Guardar {selected.length} canción{selected.length > 1 ? 'es' : ''} para domingo
-            </button>
-          )}
+      <div className="mb-6 lg:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">Banco de Canciones</h1>
+            <p className="text-gray-600 text-sm lg:text-base">Selecciona las canciones para el servicio del domingo</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {songs.length > 0 && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-terracota text-blanco px-4 py-3 lg:px-6 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200 text-sm lg:text-base"
+              >
+                ➕ Crear Nueva Canción
+              </button>
+            )}
+            {selected.length > 0 && (
+              <button
+                onClick={() =>
+                  alert(`Guardando ${selected.length} canción(es) en el domingo...`)
+                }
+                className="bg-blue-500 text-blanco px-4 py-3 lg:px-6 rounded-xl font-semibold shadow-lg hover:bg-blue-600 transform hover:scale-105 transition-all duration-200 text-sm lg:text-base"
+              >
+                🎵 Guardar {selected.length} canción{selected.length > 1 ? 'es' : ''} para domingo
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Barra de búsqueda compacta */}
-      <div className="bg-blanco p-6 rounded-2xl shadow-lg mb-8">
-        <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
+      <div className="bg-blanco p-4 lg:p-6 rounded-2xl shadow-lg mb-6 lg:mb-8">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-1 relative w-full">
             <input
               type="text"
               placeholder="🔍 Buscar canciones por título o artista..."
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+          <div className="text-xs lg:text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg whitespace-nowrap">
             {filteredSongs.length} canciones encontradas
           </div>
         </div>
       </div>
 
       {/* Grid de canciones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
         {filteredSongs.map((song) => {
           const isSelected = selected.includes(song._id);
           return (
             <div
               key={song._id}
-              className={`bg-blanco rounded-2xl p-6 shadow-lg transition-all duration-200 transform hover:scale-105 ${
+              className={`bg-blanco rounded-2xl p-4 lg:p-6 shadow-lg transition-all duration-200 transform hover:scale-105 ${
                 isSelected 
                   ? "ring-4 ring-green-400 bg-green-50 border-2 border-green-300" 
                   : "hover:shadow-xl hover:ring-2 hover:ring-terracota/20"
               }`}
             >
               <div 
-                className="mb-4 cursor-pointer"
+                className="mb-3 lg:mb-4 cursor-pointer"
                 onClick={() => router.push(`/songs/${song._id}`)}
               >
-                <h2 className="font-bold text-xl text-gray-800 mb-1 line-clamp-2">{song.title}</h2>
-                <p className="text-terracota font-medium">{song.artist}</p>
+                <h2 className="font-bold text-lg lg:text-xl text-gray-800 mb-1 line-clamp-2">{song.title}</h2>
+                <p className="text-terracota font-medium text-sm lg:text-base">{song.artist}</p>
                 <div className="mt-2 inline-block bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-xs">
                   🎹 Tono: {song.key}
                 </div>
@@ -181,7 +183,7 @@ export default function SongsPage() {
                   e.stopPropagation();
                   toggleSong(song._id);
                 }}
-                className={`w-full py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
+                className={`w-full py-2 lg:py-3 px-3 lg:px-4 rounded-xl font-semibold transition-all duration-200 text-sm lg:text-base ${
                   isSelected
                     ? "bg-green-500 text-blanco hover:bg-green-600"
                     : "bg-terracota text-blanco hover:bg-terracota-dark"
@@ -196,22 +198,22 @@ export default function SongsPage() {
 
       {/* Mensaje cuando no hay resultados */}
       {filteredSongs.length === 0 && search && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">No se encontraron canciones</h3>
-          <p className="text-gray-500">Intenta con otros términos de búsqueda</p>
+        <div className="text-center py-8 lg:py-12">
+          <div className="text-4xl lg:text-6xl mb-4">🔍</div>
+          <h3 className="text-lg lg:text-xl font-semibold text-gray-600 mb-2">No se encontraron canciones</h3>
+          <p className="text-gray-500 text-sm lg:text-base">Intenta con otros términos de búsqueda</p>
         </div>
       )}
 
       {/* Mensaje cuando no hay canciones */}
       {songs.length === 0 && !search && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🎵</div>
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">No hay canciones en el banco</h3>
-          <p className="text-gray-500 mb-6">Crea tu primera canción para comenzar a llenar el banco musical</p>
+        <div className="text-center py-8 lg:py-12">
+          <div className="text-4xl lg:text-6xl mb-4">🎵</div>
+          <h3 className="text-lg lg:text-xl font-semibold text-gray-600 mb-2">No hay canciones en el banco</h3>
+          <p className="text-gray-500 mb-6 text-sm lg:text-base">Crea tu primera canción para comenzar a llenar el banco musical</p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-terracota text-blanco px-6 py-3 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200"
+            className="bg-terracota text-blanco px-4 py-3 lg:px-6 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200 text-sm lg:text-base"
           >
             ➕ Crear Primera Canción
           </button>
