@@ -189,8 +189,8 @@ function extractSectionName(line: string): string {
 function processChordAndTextLines(chordLine: string, textLine: string): { text: string; chords: { note: string; index: number }[] } | null {
   if (!textLine.trim()) return null;
 
-  // Extraer acordes de la línea de acordes
-  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  // Patrón mejorado para detectar acordes complejos como Dm/G, C7/G, C/D#, C#/G#, etc.
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?(?:\/[A-G][#b]?)?\b/g;
   const chordMatches = [...chordLine.matchAll(chordPattern)];
   
   if (chordMatches.length === 0) {
@@ -200,7 +200,7 @@ function processChordAndTextLines(chordLine: string, textLine: string): { text: 
     };
   }
 
-  // Calcular posiciones de los acordes en el texto
+  // Calcular posiciones de los acordes en el texto usando un algoritmo más inteligente
   const chords: { note: string; index: number }[] = [];
   
   for (const match of chordMatches) {
@@ -208,12 +208,36 @@ function processChordAndTextLines(chordLine: string, textLine: string): { text: 
     const chordIndex = match.index!;
     
     // Calcular la posición en el texto basada en la posición en la línea de acordes
-    // Usar la posición exacta del acorde en la línea de acordes como referencia
-    const textIndex = Math.min(chordIndex, textLine.length);
+    // Pero ajustar para que los acordes se posicionen mejor en el texto
+    let textIndex = chordIndex;
+    
+    // Si el acorde está muy al final de la línea de acordes, ajustar la posición
+    if (chordIndex > textLine.length) {
+      textIndex = textLine.length;
+    }
+    
+    // Buscar una posición más natural en el texto basada en espacios
+    const textWords = textLine.split(/\s+/);
+    let currentPos = 0;
+    let bestPosition = textIndex;
+    
+    // Si el acorde está al principio de la línea de acordes, ponerlo al principio del texto
+    if (chordIndex < 8) {
+      bestPosition = 0;
+    } else {
+      // Buscar la palabra más cercana en el texto
+      for (let i = 0; i < textWords.length; i++) {
+        const wordStart = textLine.indexOf(textWords[i], currentPos);
+        if (Math.abs(wordStart - chordIndex) < Math.abs(bestPosition - chordIndex)) {
+          bestPosition = wordStart;
+        }
+        currentPos = wordStart + textWords[i].length;
+      }
+    }
     
     chords.push({
       note: chord,
-      index: textIndex
+      index: bestPosition
     });
   }
 
@@ -235,8 +259,8 @@ function processLine(line: string): { text: string; chords: { note: string; inde
     return null; // Las líneas de solo acordes se procesan con la siguiente línea de texto
   }
 
-  // Buscar acordes en la línea usando una expresión regular más específica
-  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  // Buscar acordes en la línea usando una expresión regular mejorada para acordes complejos (incluyendo C/D#, C#/G#, etc.)
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?(?:\/[A-G][#b]?)?\b/g;
   const chordMatches = [...line.matchAll(chordPattern)];
   
   if (chordMatches.length === 0) {
@@ -287,8 +311,8 @@ function isChordLine(line: string): boolean {
   // Si la línea está vacía, no es una línea de acordes
   if (!trimmedLine) return false;
   
-  // Buscar acordes en la línea
-  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  // Buscar acordes en la línea (incluyendo acordes complejos como Dm/G, C/D#, C#/G#, etc.)
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?(?:\/[A-G][#b]?)?\b/g;
   const chordMatches = [...trimmedLine.matchAll(chordPattern)];
   
   // Si no hay acordes, no es una línea de acordes
@@ -309,7 +333,7 @@ function isChordLine(line: string): boolean {
  * Verifica si una línea tiene acordes mezclados con texto
  */
 function hasChordsAndText(line: string): boolean {
-  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?(?:\/[A-G][#b]?)?\b/g;
   const chordMatches = [...line.matchAll(chordPattern)];
   
   const textPattern = /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g;
