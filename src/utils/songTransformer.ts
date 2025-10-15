@@ -216,8 +216,6 @@ function processLine(line: string): { text: string; chords: { note: string; inde
 
   // Procesar acordes y texto
   const chords: { note: string; index: number }[] = [];
-  let text = line;
-  let offset = 0;
 
   // Ordenar acordes por posición de aparición
   chordMatches.sort((a, b) => a.index - b.index);
