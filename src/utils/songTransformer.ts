@@ -98,12 +98,18 @@ function parseOriginalFormat(text: string): ParsedSong {
       } else if (isChordLine(line)) {
         // Esta es una línea de solo acordes, guardarla para la siguiente línea
         pendingChordLine = line;
-      } else {
-        // Línea normal (sin acordes o con acordes mezclados)
+      } else if (hasChordsAndText(line)) {
+        // Línea que tiene acordes mezclados con texto
         const processedLine = processLine(line);
         if (processedLine) {
           currentLines.push(processedLine);
         }
+      } else if (line.trim()) {
+        // Línea de solo texto
+        currentLines.push({
+          text: line.trim(),
+          chords: []
+        });
       }
     }
   }
@@ -128,7 +134,22 @@ function isSectionHeader(line: string): boolean {
   ];
   
   const lowerLine = line.toLowerCase();
-  return sectionKeywords.some(keyword => lowerLine.includes(keyword));
+  
+  // Buscar palabras clave con dos puntos
+  if (sectionKeywords.some(keyword => lowerLine.includes(keyword))) {
+    return true;
+  }
+  
+  // Buscar palabras clave sin dos puntos (como "ESTROFA", "CORO")
+  const sectionWords = [
+    'intro', 'interlude', 'estrofa', 'verso', 'verse',
+    'coro', 'chorus', 'puente', 'bridge', 'outro',
+    'instrumental', 'solo', 'break'
+  ];
+  
+  // Si la línea es solo una palabra de sección (sin otros caracteres)
+  const trimmedLower = lowerLine.trim();
+  return sectionWords.some(word => trimmedLower === word);
 }
 
 /**
@@ -146,6 +167,18 @@ function extractSectionName(line: string): string {
   if (lowerLine.includes('instrumental:')) return 'instrumental';
   if (lowerLine.includes('solo:')) return 'solo';
   if (lowerLine.includes('break:')) return 'break';
+  
+  // Manejar palabras sin dos puntos
+  const trimmedLower = lowerLine.trim();
+  if (trimmedLower === 'intro') return 'intro';
+  if (trimmedLower === 'interlude') return 'interlude';
+  if (trimmedLower === 'estrofa' || trimmedLower === 'verso' || trimmedLower === 'verse') return 'verse';
+  if (trimmedLower === 'coro' || trimmedLower === 'chorus') return 'chorus';
+  if (trimmedLower === 'puente' || trimmedLower === 'bridge') return 'bridge';
+  if (trimmedLower === 'outro') return 'outro';
+  if (trimmedLower === 'instrumental') return 'instrumental';
+  if (trimmedLower === 'solo') return 'solo';
+  if (trimmedLower === 'break') return 'break';
   
   return 'verse'; // Por defecto
 }
@@ -174,8 +207,8 @@ function processChordAndTextLines(chordLine: string, textLine: string): { text: 
     const chord = match[0];
     const chordIndex = match.index!;
     
-    // Calcular la posición aproximada en el texto basada en la posición en la línea de acordes
-    // Esto es una aproximación simple - en un caso real podrías necesitar un algoritmo más sofisticado
+    // Calcular la posición en el texto basada en la posición en la línea de acordes
+    // Usar la posición exacta del acorde en la línea de acordes como referencia
     const textIndex = Math.min(chordIndex, textLine.length);
     
     chords.push({
@@ -249,15 +282,40 @@ function processLine(line: string): { text: string; chords: { note: string; inde
  * Verifica si una línea contiene solo acordes
  */
 function isChordLine(line: string): boolean {
-  // Una línea es de solo acordes si contiene principalmente acordes y espacios
-  const chordPattern = /^[\s]*[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?[\s\-]*$/;
-  const hasOnlyChords = chordPattern.test(line.trim());
+  const trimmedLine = line.trim();
   
-  // También considerar líneas que tienen solo acordes separados por espacios
-  const chordOnlyPattern = /^[\s]*[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?[\s]+[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?[\s\-]*$/;
-  const hasMultipleChords = chordOnlyPattern.test(line.trim());
+  // Si la línea está vacía, no es una línea de acordes
+  if (!trimmedLine) return false;
   
-  return hasOnlyChords || hasMultipleChords;
+  // Buscar acordes en la línea
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  const chordMatches = [...trimmedLine.matchAll(chordPattern)];
+  
+  // Si no hay acordes, no es una línea de acordes
+  if (chordMatches.length === 0) return false;
+  
+  // Buscar texto que no sean acordes (letras, números, espacios, guiones)
+  const textPattern = /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g;
+  const textMatches = [...trimmedLine.matchAll(textPattern)];
+  
+  // Si hay texto que no son acordes, no es una línea de solo acordes
+  if (textMatches.length > 0) return false;
+  
+  // Si solo hay acordes, espacios, guiones y caracteres especiales, es una línea de acordes
+  return true;
+}
+
+/**
+ * Verifica si una línea tiene acordes mezclados con texto
+ */
+function hasChordsAndText(line: string): boolean {
+  const chordPattern = /\b[A-G][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13)?\b/g;
+  const chordMatches = [...line.matchAll(chordPattern)];
+  
+  const textPattern = /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g;
+  const textMatches = [...line.matchAll(textPattern)];
+  
+  return chordMatches.length > 0 && textMatches.length > 0;
 }
 
 /**
