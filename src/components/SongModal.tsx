@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { transformToChordPro, validateOriginalFormat } from "../utils/songTransformer";
 
 interface LyricLine {
   text: string;
@@ -44,8 +45,10 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     { text: "", chords: [] }
   ]);
 
-  const [inputMode, setInputMode] = useState<'manual' | 'chordpro'>('manual');
+  const [inputMode, setInputMode] = useState<'manual' | 'chordpro' | 'original'>('manual');
   const [chordProText, setChordProText] = useState("");
+  const [originalText, setOriginalText] = useState("");
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Inicializar datos cuando el modal se abre en modo edición
   React.useEffect(() => {
@@ -179,6 +182,37 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     setLyricsLines(newLines);
   };
 
+  const handleOriginalTextChange = (text: string) => {
+    setOriginalText(text);
+    
+    // Validar el formato en tiempo real
+    const validation = validateOriginalFormat(text);
+    setValidationErrors(validation.errors);
+  };
+
+  const transformOriginalToChordPro = () => {
+    if (!originalText.trim()) {
+      alert("Debes ingresar el texto de la canción");
+      return;
+    }
+
+    const validation = validateOriginalFormat(originalText);
+    if (!validation.isValid) {
+      alert("El formato del texto no es válido:\n" + validation.errors.join('\n'));
+      return;
+    }
+
+    try {
+      const chordProResult = transformToChordPro(originalText);
+      setChordProText(chordProResult);
+      setInputMode('chordpro');
+      setValidationErrors([]);
+    } catch (error) {
+      console.error('Error al transformar:', error);
+      alert("Error al transformar el texto. Verifica el formato e inténtalo de nuevo.");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -191,7 +225,29 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
       
       onSave({ chordProText: chordProText.trim() });
       handleClose();
+    } else if (inputMode === 'original') {
+      // Transformar y guardar
+      if (!originalText.trim()) {
+        alert("Debes ingresar el texto de la canción");
+        return;
+      }
+
+      const validation = validateOriginalFormat(originalText);
+      if (!validation.isValid) {
+        alert("El formato del texto no es válido:\n" + validation.errors.join('\n'));
+        return;
+      }
+
+      try {
+        const chordProResult = transformToChordPro(originalText);
+        onSave({ chordProText: chordProResult });
+        handleClose();
+      } catch (error) {
+        console.error('Error al transformar:', error);
+        alert("Error al transformar el texto. Verifica el formato e inténtalo de nuevo.");
+      }
     } else {
+      // Modo manual
       // Validar que al menos una línea tenga texto
       const hasContent = lyricsLines.some(line => line.text.trim() !== "");
       if (!hasContent) {
@@ -220,6 +276,8 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     setCurrentChords({});
     setInputMode('manual');
     setChordProText("");
+    setOriginalText("");
+    setValidationErrors([]);
     onClose();
   };
 
@@ -245,7 +303,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
             {/* Selector de modo de entrada */}
             <div className="bg-gray-50 p-4 rounded-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Modo de Entrada</h3>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setInputMode('manual')}
@@ -259,6 +317,17 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
                 </button>
                 <button
                   type="button"
+                  onClick={() => setInputMode('original')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    inputMode === 'original'
+                      ? 'bg-terracota text-blanco'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  📝 Formato Web
+                </button>
+                <button
+                  type="button"
                   onClick={() => setInputMode('chordpro')}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                     inputMode === 'chordpro'
@@ -269,6 +338,11 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
                   🚀 ChordPro (Rápido)
                 </button>
               </div>
+              {inputMode === 'original' && mode === 'create' && (
+                <p className="text-sm text-gray-600 mt-2">
+                  💡 Pega el texto de la canción tal como aparece en las páginas web de acordes (formato original)
+                </p>
+              )}
               {inputMode === 'chordpro' && mode === 'create' && (
                 <p className="text-sm text-gray-600 mt-2">
                   💡 Ingresa la canción completa en formato ChordPro para una creación más rápida
@@ -290,8 +364,90 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
               )}
             </div>
 
-            {/* Modo ChordPro */}
-            {inputMode === 'chordpro' ? (
+            {/* Modo Formato Original */}
+            {inputMode === 'original' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Texto de la Canción (Formato Web)
+                </label>
+                <textarea
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 font-mono text-sm"
+                  rows={12}
+                  value={originalText}
+                  onChange={(e) => handleOriginalTextChange(e.target.value)}
+                  placeholder={`title Espíritu Santo bienvenido
+artist Miel San Marcos
+key C
+Intro: F  - Am - C - G
+Interlude: C - F  - Am - C - F
+
+Estrofa:
+          C                 F
+Espíritu Santo bienvenido a este lugar
+     G                   F      C
+Jesucristo bienvenido a este lugar
+       C      C/E    F
+Padre omnipotente de gracia y amor
+       G             C
+Bienvenido a este lugar.
+
+CORO:
+    C
+Bienvenido espíritu de Dios
+      Am
+Damos Gloria solo a ti Señor
+      G
+Bienvenido espíritu de Dios
+       Dm                  G
+Hoy rendimos coronas a tus pies`}
+                />
+                
+                {/* Mostrar errores de validación */}
+                {validationErrors.length > 0 && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <h4 className="text-sm font-medium text-red-800 mb-2">⚠️ Errores encontrados:</h4>
+                    <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Botón para transformar */}
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={transformOriginalToChordPro}
+                    disabled={!originalText.trim() || validationErrors.length > 0}
+                    className="bg-blue-500 text-blanco px-4 py-2 rounded-lg font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200"
+                  >
+                    🔄 Transformar a ChordPro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOriginalText("");
+                      setValidationErrors([]);
+                    }}
+                    className="bg-gray-500 text-blanco px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200"
+                  >
+                    🗑️ Limpiar
+                  </button>
+                </div>
+
+                <div className="mt-3 text-sm text-gray-500">
+                  <p><strong>Formato esperado:</strong></p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li><code>title Nombre de la Canción</code> - Título de la canción</li>
+                    <li><code>artist Nombre del Artista</code> - Artista</li>
+                    <li><code>key C</code> - Tonalidad (opcional)</li>
+                    <li><code>Estrofa:</code>, <code>CORO:</code>, etc. - Secciones</li>
+                    <li>Acordes posicionados sobre el texto</li>
+                  </ul>
+                </div>
+              </div>
+            ) : inputMode === 'chordpro' ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Texto ChordPro
@@ -522,7 +678,10 @@ Then sings my [F]soul my [C]savior God to [Am]thee
                 type="submit"
                 className="flex-1 bg-terracota text-blanco py-3 rounded-xl font-medium hover:bg-terracota-dark transition-all duration-200"
               >
-                🎵 {mode === 'edit' ? 'Actualizar Canción' : (inputMode === 'chordpro' ? 'Crear con ChordPro' : 'Crear Canción')}
+                🎵 {mode === 'edit' ? 'Actualizar Canción' : 
+                    (inputMode === 'chordpro' ? 'Crear con ChordPro' : 
+                     inputMode === 'original' ? 'Crear desde Formato Web' : 
+                     'Crear Canción')}
               </button>
             </div>
           </form>
