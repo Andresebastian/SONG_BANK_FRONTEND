@@ -118,11 +118,14 @@ export const updateEvent = async (id: string, data: {
   description: string;
 }) => {
   const res = await fetch(`/api/events/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
+  }).then(res => {
+    console.log("updateEvent response:", res);
+    return res.json();
   });
-  return await res.json();
+  return res;
 };
 
 export const getSong = async (id: string) => {

@@ -200,8 +200,6 @@ export default function EventModal({
     if (setId && setLists.length > 0) {
       const selectedSetList = setLists.find(sl => sl._id === setId);
       if (selectedSetList && selectedSetList.songs) {
-        // Si el setlist ya viene con la información completa de las canciones, no necesitamos hacer nada
-        // Si solo viene con IDs, necesitaríamos cargar las canciones, pero por ahora asumimos que viene completo
         console.log("SetList seleccionado:", selectedSetList);
       }
     }
