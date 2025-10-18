@@ -18,6 +18,57 @@ interface Song {
   }[];
 }
 
+// Función para corregir las posiciones de los acordes
+// El backend puede estar guardando posiciones incorrectas (incluyendo los corchetes)
+// Esta función recalcula las posiciones correctas basándose en el texto limpio
+function fixChordPositions(lyricsLines: Song['lyricsLines']): Song['lyricsLines'] {
+  if (!lyricsLines) return [];
+  
+  return lyricsLines.map(line => {
+    if (line.chords.length === 0) return line;
+    
+    // Reconstruir la línea original con acordes en las posiciones guardadas
+    let reconstructed = line.text;
+    const sortedChords = [...line.chords].sort((a, b) => b.index - a.index);
+    
+    sortedChords.forEach(chord => {
+      // Insertar el acorde en su posición
+      if (chord.index <= reconstructed.length) {
+        reconstructed = reconstructed.slice(0, chord.index) + `[${chord.note}]` + reconstructed.slice(chord.index);
+      }
+    });
+    
+    // Ahora parsear correctamente para obtener las posiciones ajustadas
+    const chordPattern = /\[([^\]]+)\]/g;
+    const correctedChords: { note: string; index: number }[] = [];
+    let offset = 0;
+    let match;
+    
+    while ((match = chordPattern.exec(reconstructed)) !== null) {
+      const chordWithBrackets = match[0];
+      const chordNote = match[1];
+      const originalIndex = match.index;
+      const adjustedIndex = originalIndex - offset;
+      
+      correctedChords.push({
+        note: chordNote,
+        index: adjustedIndex
+      });
+      
+      offset += chordWithBrackets.length;
+    }
+    
+    // Limpiar el texto de acordes
+    const cleanText = reconstructed.replace(chordPattern, '').replace(/\s+/g, ' ').trim();
+    
+    return {
+      ...line,
+      text: cleanText,
+      chords: correctedChords
+    };
+  });
+}
+
 export default function SongDetail() {
   const router = useRouter();
   const { id } = router.query; // el id de la canción
@@ -37,7 +88,12 @@ export default function SongDetail() {
     if (id) {
       getSong(id as string)
         .then(async (data) => {
-          setSong(data); // aquí ya tienes la canción
+          // Corregir las posiciones de los acordes antes de guardar en el estado
+          const correctedData = {
+            ...data,
+            lyricsLines: fixChordPositions(data.lyricsLines)
+          };
+          setSong(correctedData);
           setLoading(false);
           
           // Si viene desde un evento con una tonalidad específica, aplicarla automáticamente
@@ -46,7 +102,12 @@ export default function SongDetail() {
             try {
               setTransposing(true);
               const updatedSong = await transposeSong(id as string, targetKey);
-              setSong(updatedSong);
+              // También corregir las posiciones en la canción transpuesta
+              const correctedTransposedSong = {
+                ...updatedSong,
+                lyricsLines: fixChordPositions(updatedSong.lyricsLines)
+              };
+              setSong(correctedTransposedSong);
             } catch (error) {
               console.error('Error al cambiar tonalidad:', error);
             } finally {
@@ -77,7 +138,12 @@ export default function SongDetail() {
     setTransposing(true);
     try {
       const updatedSong = await transposeSong(id as string, newKey);
-      setSong(updatedSong);
+      // Corregir las posiciones de los acordes después de transponer
+      const correctedSong = {
+        ...updatedSong,
+        lyricsLines: fixChordPositions(updatedSong.lyricsLines)
+      };
+      setSong(correctedSong);
       setShowTransposeModal(false);
     } catch (error) {
       console.error('Error al cambiar tonalidad:', error);
@@ -116,7 +182,12 @@ export default function SongDetail() {
         });
       }
       
-      setSong(updatedSong);
+      // Corregir las posiciones de los acordes después de actualizar
+      const correctedSong = {
+        ...updatedSong,
+        lyricsLines: fixChordPositions(updatedSong.lyricsLines)
+      };
+      setSong(correctedSong);
       setShowEditModal(false);
       alert('¡Canción actualizada exitosamente!');
     } catch (error) {
