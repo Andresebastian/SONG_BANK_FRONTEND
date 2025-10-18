@@ -241,8 +241,11 @@ function processChordAndTextLines(chordLine: string, textLine: string): { text: 
     });
   }
 
+  // Limpiar espacios múltiples en el texto
+  const cleanText = textLine.replace(/\s+/g, ' ').trim();
+
   return {
-    text: textLine.trim(),
+    text: cleanText,
     chords: chords.sort((a, b) => a.index - b.index)
   };
 }
@@ -289,15 +292,25 @@ function processLine(line: string): { text: string; chords: { note: string; inde
 
   // Remover todos los acordes del texto para obtener solo la letra
   let cleanText = line;
-  for (const chord of chords) {
-    const chordIndex = cleanText.indexOf(chord.note);
+  
+  // Ordenar acordes por posición descendente para evitar problemas de índices
+  const sortedChords = [...chords].sort((a, b) => b.index - a.index);
+  
+  for (const chord of sortedChords) {
+    // Buscar el acorde con corchetes [F], [G], etc.
+    const chordWithBrackets = `[${chord.note}]`;
+    const chordIndex = cleanText.indexOf(chordWithBrackets);
     if (chordIndex !== -1) {
-      cleanText = cleanText.substring(0, chordIndex) + cleanText.substring(chordIndex + chord.note.length);
+      // Remover el acorde con corchetes
+      cleanText = cleanText.substring(0, chordIndex) + cleanText.substring(chordIndex + chordWithBrackets.length);
     }
   }
 
+  // Limpiar espacios múltiples y normalizar espacios
+  cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
   return {
-    text: cleanText.trim(),
+    text: cleanText,
     chords: chords
   };
 }
