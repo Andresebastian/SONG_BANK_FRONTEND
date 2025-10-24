@@ -471,7 +471,7 @@ export default function SongDetail() {
                       if (chords.length === 0) {
                         // Si no hay acordes, solo mostrar el texto
                         return (
-                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-medium text-gray-800 leading-relaxed`}>
+                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-medium text-gray-800 leading-relaxed whitespace-pre-wrap`}>
                             {text}
                           </div>
                         );
@@ -479,61 +479,31 @@ export default function SongDetail() {
 
                       // Ordenar acordes por índice
                       const sortedChords = [...chords].sort((a, b) => a.index - b.index);
-                      
-                      // Crear un array de caracteres con sus posiciones
-                      const characters = text.split('');
-                      const maxLength = Math.max(text.length, ...sortedChords.map(chord => chord.index + chord.note.length));
-                      
-                      // Crear arrays para acordes y texto
-                      const chordRow = new Array(maxLength).fill('');
-                      const textRow = new Array(maxLength).fill('');
-                      
-                      // Llenar el texto
-                      characters.forEach((char, index) => {
-                        if (index < maxLength) {
-                          textRow[index] = char;
-                        }
-                      });
-                      
-                      // Colocar acordes en sus posiciones
-                      sortedChords.forEach(chord => {
-                        if (chord.index < maxLength) {
-                          chordRow[chord.index] = chord.note;
-                          // Marcar las posiciones ocupadas por el acorde
-                          for (let i = 1; i < chord.note.length && chord.index + i < maxLength; i++) {
-                            chordRow[chord.index + i] = '\u00A0'; // Espacio no separable
-                          }
-                        }
-                      });
 
                       return (
                         <div className="relative min-w-0">
                           {/* Línea de acordes */}
-                          <div className={`${fontClasses.chord} font-mono text-terracota mb-1 leading-tight`}>
-                            <div className="flex min-w-0 overflow-x-auto">
-                              {chordRow.map((chord, index) => (
-                                <span key={index} className="flex-shrink-0">
-                                  {chord && chord !== '\u00A0' ? (
-                                    <span className="bg-terracota/10 text-terracota px-1 py-0.5 rounded font-semibold inline-block whitespace-nowrap">
-                                      {chord}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block w-3"></span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
+                          <div className={`${fontClasses.chord} font-mono text-terracota mb-1 leading-tight whitespace-pre overflow-x-auto`}>
+                            {sortedChords.map((chord, idx) => {
+                              const prevChord = idx > 0 ? sortedChords[idx - 1] : null;
+                              const spaceBefore = prevChord 
+                                ? ' '.repeat(Math.max(0, chord.index - (prevChord.index + prevChord.note.length)))
+                                : ' '.repeat(chord.index);
+                              
+                              return (
+                                <React.Fragment key={idx}>
+                                  <span>{spaceBefore}</span>
+                                  <span className="bg-terracota/10 text-terracota px-1 py-0.5 rounded font-semibold inline-block">
+                                    {chord.note}
+                                  </span>
+                                </React.Fragment>
+                              );
+                            })}
                           </div>
                           
                           {/* Línea de texto */}
-                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-medium text-gray-800 leading-relaxed`}>
-                            <div className="flex min-w-0">
-                              {textRow.map((char, index) => (
-                                <span key={index} className="flex-shrink-0">
-                                  {char || '\u00A0'}
-                                </span>
-                              ))}
-                            </div>
+                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-mono text-gray-800 leading-relaxed whitespace-pre-wrap overflow-x-auto`}>
+                            {text}
                           </div>
                         </div>
                       );
