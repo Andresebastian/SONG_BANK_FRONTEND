@@ -18,52 +18,99 @@ interface Song {
   }[];
 }
 
-// Función para corregir las posiciones de los acordes
-// El backend puede estar guardando posiciones incorrectas (incluyendo los corchetes)
-// Esta función recalcula las posiciones correctas basándose en el texto limpio
+// Función para verificar si el texto necesita corrección de espacios
+// Solo aplica correcciones si detecta que el texto está concatenado sin espacios
 function fixChordPositions(lyricsLines: Song['lyricsLines']): Song['lyricsLines'] {
   if (!lyricsLines) return [];
   
   return lyricsLines.map(line => {
-    if (line.chords.length === 0) return line;
+    // Si la línea está vacía o solo tiene espacios, retornarla tal cual
+    if (!line.text || !line.text.trim()) {
+      return line;
+    }
+
+    // Detectar si el texto ya tiene espacios correctos
+    // Un texto con espacios correctos generalmente tiene al menos un espacio cada 15-20 caracteres
+    const textLength = line.text.length;
+    const spaceCount = (line.text.match(/\s/g) || []).length;
+    const hasProperSpacing = textLength === 0 || spaceCount > 0 || textLength < 10;
     
-    // Reconstruir la línea original con acordes en las posiciones guardadas
-    let reconstructed = line.text;
-    const sortedChords = [...line.chords].sort((a, b) => b.index - a.index);
+    // Si el texto ya tiene espacios correctos, solo retornarlo sin modificar
+    if (hasProperSpacing) {
+      return {
+        ...line,
+        text: line.text,
+        chords: line.chords
+      };
+    }
+
+    // CASO ESPECIAL: Si el texto NO tiene espacios (problema del backend viejo)
+    // Intentar reconstruir los espacios basándose en los acordes
+    console.warn('Detectado texto sin espacios, aplicando corrección:', line.text);
     
-    sortedChords.forEach(chord => {
-      // Insertar el acorde en su posición
-      if (chord.index <= reconstructed.length) {
-        reconstructed = reconstructed.slice(0, chord.index) + `[${chord.note}]` + reconstructed.slice(chord.index);
-      }
-    });
-    
-    // Ahora parsear correctamente para obtener las posiciones ajustadas
-    const chordPattern = /\[([^\]]+)\]/g;
-    const correctedChords: { note: string; index: number }[] = [];
-    let offset = 0;
-    let match;
-    
-    while ((match = chordPattern.exec(reconstructed)) !== null) {
-      const chordWithBrackets = match[0];
-      const chordNote = match[1];
-      const originalIndex = match.index;
-      const adjustedIndex = originalIndex - offset;
-      
-      correctedChords.push({
-        note: chordNote,
-        index: adjustedIndex
-      });
-      
-      offset += chordWithBrackets.length;
+    if (line.chords.length === 0) {
+      // Si no hay acordes, intentar agregar espacios basándose en mayúsculas
+      const textWithSpaces = line.text
+        .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
+        .replace(/([a-z])([A-Z])/g, '$1 $2');
+      return {
+        ...line,
+        text: textWithSpaces
+      };
     }
     
-    // Limpiar el texto de acordes
-    const cleanText = reconstructed.replace(chordPattern, '').replace(/\s+/g, ' ').trim();
+    // Reconstruir el texto insertando espacios en las posiciones de los acordes
+    const sortedChords = [...line.chords].sort((a, b) => a.index - b.index);
+    let result = '';
+    let lastIndex = 0;
+    
+    sortedChords.forEach((chord, i) => {
+      const textSegment = line.text.substring(lastIndex, chord.index);
+      
+      if (i === 0) {
+        result += textSegment;
+      } else {
+        result += ' ' + textSegment;
+      }
+      
+      lastIndex = chord.index;
+    });
+    
+    // Agregar el texto restante
+    if (lastIndex < line.text.length) {
+      const remaining = line.text.substring(lastIndex);
+      result += remaining;
+    }
+    
+    // Agregar espacios antes de mayúsculas
+    result = result
+      .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Recalcular posiciones de acordes en el texto corregido
+    const correctedChords: { note: string; index: number }[] = [];
+    let currentPos = 0;
+    
+    for (const chord of sortedChords) {
+      correctedChords.push({
+        note: chord.note,
+        index: currentPos
+      });
+      
+      // Buscar la siguiente palabra
+      const nextSpace = result.indexOf(' ', currentPos);
+      if (nextSpace !== -1) {
+        currentPos = nextSpace + 1;
+      } else {
+        currentPos = result.length;
+      }
+    }
     
     return {
       ...line,
-      text: cleanText,
+      text: result,
       chords: correctedChords
     };
   });
