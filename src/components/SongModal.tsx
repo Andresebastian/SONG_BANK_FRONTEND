@@ -13,6 +13,7 @@ interface Song {
   artist: string;
   key: string;
   notes?: string;
+  tags?: string[];
   lyricsLines?: LyricLine[];
 }
 
@@ -22,6 +23,7 @@ interface SongData {
   key?: string;
   lyricsLines?: LyricLine[];
   notes?: string;
+  tags?: string[];
   chordProText?: string;
 }
 
@@ -39,6 +41,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
     artist: "",
     key: "C",
     notes: "",
+    tagsInput: "", // comma-separated para mostrar en input
   });
 
   const [lyricsLines, setLyricsLines] = useState<LyricLine[]>([
@@ -58,6 +61,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
         artist: song.artist || "",
         key: song.key || "C",
         notes: song.notes || "",
+        tagsInput: Array.isArray(song.tags) ? song.tags.join(", ") : "",
       });
       setLyricsLines(song.lyricsLines && song.lyricsLines.length > 0 
         ? song.lyricsLines 
@@ -70,6 +74,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
         artist: "",
         key: "C",
         notes: "",
+        tagsInput: "",
       });
       setLyricsLines([{ text: "", chords: [] }]);
     }
@@ -223,7 +228,10 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
         return;
       }
       
-      onSave({ chordProText: chordProText.trim() });
+      const tags = formData.tagsInput
+        ? formData.tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
+        : undefined;
+      onSave({ chordProText: chordProText.trim(), tags });
       handleClose();
     } else if (inputMode === 'original') {
       // Transformar y guardar
@@ -240,7 +248,10 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
 
       try {
         const chordProResult = transformToChordPro(originalText);
-        onSave({ chordProText: chordProResult });
+        const tags = formData.tagsInput
+          ? formData.tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
+          : undefined;
+        onSave({ chordProText: chordProResult, tags });
         handleClose();
       } catch (error) {
         console.error('Error al transformar:', error);
@@ -255,8 +266,15 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
         return;
       }
 
+      const tags = formData.tagsInput
+        ? formData.tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
+        : undefined;
       const songData = {
-        ...formData,
+        title: formData.title,
+        artist: formData.artist,
+        key: formData.key,
+        notes: formData.notes || undefined,
+        tags,
         lyricsLines: lyricsLines.filter(line => line.text.trim() !== "")
       };
 
@@ -271,6 +289,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
       artist: "",
       key: "C",
       notes: "",
+      tagsInput: "",
     });
     setLyricsLines([{ text: "", chords: [] }]);
     setCurrentChords({});
@@ -363,6 +382,22 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = 'creat
                 </div>
               )}
             </div>
+
+            {/* Tags (visible en ChordPro y Formato Original) */}
+            {(inputMode === 'chordpro' || inputMode === 'original') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Etiquetas (Opcional)
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200"
+                  value={formData.tagsInput}
+                  onChange={(e) => handleInputChange("tagsInput", e.target.value)}
+                  placeholder="Ej: alabanza, adoración, amor (separados por coma)"
+                />
+              </div>
+            )}
 
             {/* Modo Formato Original */}
             {inputMode === 'original' ? (
@@ -541,6 +576,20 @@ Then sings my [F]soul my [C]savior God to [Am]thee
                 value={formData.notes}
                 onChange={(e) => handleInputChange("notes", e.target.value)}
                 placeholder="Información adicional sobre la canción..."
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Etiquetas (Opcional)
+              </label>
+              <input
+                type="text"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200"
+                value={formData.tagsInput}
+                onChange={(e) => handleInputChange("tagsInput", e.target.value)}
+                placeholder="Ej: alabanza, adoración, amor (separados por coma)"
               />
             </div>
 

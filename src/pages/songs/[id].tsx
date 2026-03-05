@@ -209,6 +209,7 @@ export default function SongDetail() {
       chords: { note: string; index: number }[];
     }[];
     notes?: string;
+    tags?: string[];
     chordProText?: string;
   }) => {
     if (!id) return;
@@ -216,16 +217,16 @@ export default function SongDetail() {
     try {
       let updatedSong;
       
-      // Verificar si es formato ChordPro
       if (songData.chordProText) {
-        updatedSong = await updateSongChordPro(id as string, songData.chordProText);
+        updatedSong = await updateSongChordPro(id as string, songData.chordProText, songData.tags);
       } else {
         updatedSong = await updateSong(id as string, {
           title: songData.title || '',
           artist: songData.artist || '',
           key: songData.key || '',
           lyricsLines: songData.lyricsLines || [],
-          notes: songData.notes || ''
+          notes: songData.notes || '',
+          tags: songData.tags
         });
       }
       

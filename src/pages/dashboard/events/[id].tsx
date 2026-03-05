@@ -155,6 +155,7 @@ export default function EventDetailPage() {
       chords: { note: string; index: number }[];
     }[];
     notes?: string;
+    tags?: string[];
     chordProText?: string;
   }) => {
     if (!selectedSongId) return;
@@ -163,14 +164,15 @@ export default function EventDetailPage() {
       let updatedSong;
       
       if (songData.chordProText) {
-        updatedSong = await updateSongChordPro(selectedSongId, songData.chordProText);
+        updatedSong = await updateSongChordPro(selectedSongId, songData.chordProText, songData.tags);
       } else {
         updatedSong = await updateSong(selectedSongId, {
           title: songData.title || '',
           artist: songData.artist || '',
           key: songData.key || '',
           lyricsLines: songData.lyricsLines || [],
-          notes: songData.notes || ''
+          notes: songData.notes || '',
+          tags: songData.tags
         });
       }
       

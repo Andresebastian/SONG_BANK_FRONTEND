@@ -136,6 +136,28 @@ export const getSong = async (id: string) => {
   return await res.json();
 };
 
+export type SearchSongsParams = {
+  title?: string;
+  artist?: string;
+  key?: string;
+  tags?: string;
+};
+
+export const searchSongsAdvanced = async (params: SearchSongsParams) => {
+  const searchParams = new URLSearchParams();
+  if (params.title?.trim()) searchParams.append('title', params.title.trim());
+  if (params.artist?.trim()) searchParams.append('artist', params.artist.trim());
+  if (params.key?.trim()) searchParams.append('key', params.key.trim());
+  if (params.tags?.trim()) searchParams.append('tags', params.tags.trim());
+  const query = searchParams.toString();
+  const url = query ? `/api/songs/search/advanced?${query}` : '/api/songs';
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return await res.json();
+};
+
 export const transposeSong = async (id: string, newKey: string) => {
   const res = await fetch(`/api/songs/${id}/transpose`, {
     method: 'POST',
@@ -154,6 +176,7 @@ export const createSong = async (data: {
     chords: { note: string; index: number }[];
   }[];
   notes?: string;
+  tags?: string[];
 }) => {
   const res = await fetch(`/api/songs`, {
     method: 'POST',
@@ -172,6 +195,7 @@ export const updateSong = async (id: string, data: {
     chords: { note: string; index: number }[];
   }[];
   notes?: string;
+  tags?: string[];
 }) => {
   const res = await fetch(`/api/songs/${id}`, {
     method: 'PUT',
@@ -181,20 +205,20 @@ export const updateSong = async (id: string, data: {
   return await res.json();
 };
 
-export const createSongChordPro = async (chordProText: string) => {
+export const createSongChordPro = async (chordProText: string, tags?: string[]) => {
   const res = await fetch(`/api/songs/chordpro`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ chordProText }),
+    body: JSON.stringify({ chordProText, ...(tags?.length ? { tags } : {}) }),
   });
   return await res.json();
 };
 
-export const updateSongChordPro = async (id: string, chordProText: string) => {
+export const updateSongChordPro = async (id: string, chordProText: string, tags?: string[]) => {
   const res = await fetch(`/api/songs/${id}/chordpro`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ chordProText }),
+    body: JSON.stringify({ chordProText, ...(tags?.length ? { tags } : {}) }),
   });
   return await res.json();
 };

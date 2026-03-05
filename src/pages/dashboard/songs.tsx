@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../components/LayoutDashboard";
 import SongModal from "../../components/SongModal";
-import { createSong, createSongChordPro } from "../../utils/api";
+import { createSong, createSongChordPro, searchSongsAdvanced } from "../../utils/api";
 
 interface Song {
   _id: string;
   title: string;
   artist: string;
   key: string;
+  tags?: string[];
 }
 
 interface SongData {
@@ -21,6 +22,7 @@ interface SongData {
     section?: string;
   }[];
   notes?: string;
+  tags?: string[];
   chordProText?: string;
 }
 
@@ -28,9 +30,13 @@ export default function SongsPage() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
-  const [search, setSearch] = useState("");
+  const [filterTitle, setFilterTitle] = useState("");
+  const [filterArtist, setFilterArtist] = useState("");
+  const [filterKey, setFilterKey] = useState("");
+  const [filterTags, setFilterTags] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   // Obtener token del localStorage solo en el cliente
   useEffect(() => {
@@ -40,20 +46,18 @@ export default function SongsPage() {
   }, []);
 
   const loadSongs = useCallback(async () => {
-    if (!token) return; // No cargar si no hay token
-    
+    if (!token) return;
     try {
       const res = await fetch(`/api/songs`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
+        headers: { "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
-      const mapped = data.map((s: Song) => ({
+      const mapped = (Array.isArray(data) ? data : []).map((s: Song) => ({
         _id: s._id,
         title: s.title,
         artist: s.artist,
         key: s.key,
+        tags: s.tags,
       }));
       setSongs(mapped);
     } catch (error) {
@@ -61,17 +65,45 @@ export default function SongsPage() {
     }
   }, [token]);
 
+  const runSearch = useCallback(async () => {
+    if (!token) return;
+    setSearching(true);
+    try {
+      const hasFilter = filterTitle.trim() || filterArtist.trim() || filterKey.trim() || filterTags.trim();
+      if (!hasFilter) {
+        await loadSongs();
+      } else {
+        const data = await searchSongsAdvanced({
+          title: filterTitle.trim() || undefined,
+          artist: filterArtist.trim() || undefined,
+          key: filterKey.trim() || undefined,
+          tags: filterTags.trim() || undefined,
+        });
+        const list = Array.isArray(data) ? data : [];
+        setSongs(list.map((s: Song) => ({
+          _id: s._id,
+          title: s.title,
+          artist: s.artist,
+          key: s.key,
+          tags: s.tags,
+        })));
+      }
+    } catch (error) {
+      console.error("Error searching songs:", error);
+    } finally {
+      setSearching(false);
+    }
+  }, [token, filterTitle, filterArtist, filterKey, filterTags, loadSongs]);
+
   useEffect(() => {
     loadSongs();
   }, [loadSongs]); // Ejecutar cuando el token esté disponible
 
   const handleCreateSong = async (songData: SongData) => {
     try {
-      // Verificar si es formato ChordPro
       if (songData.chordProText) {
-        await createSongChordPro(songData.chordProText);
+        await createSongChordPro(songData.chordProText, songData.tags);
       } else {
-        // Validar que los campos requeridos estén presentes
         if (!songData.title || !songData.artist || !songData.key || !songData.lyricsLines) {
           alert("Por favor completa todos los campos requeridos.");
           return;
@@ -81,10 +113,11 @@ export default function SongsPage() {
           artist: songData.artist,
           key: songData.key,
           lyricsLines: songData.lyricsLines,
-          notes: songData.notes
+          notes: songData.notes,
+          tags: songData.tags,
         });
       }
-      await loadSongs(); // Recargar la lista de canciones
+      await loadSongs();
       alert("¡Canción creada exitosamente!");
     } catch (error) {
       console.error("Error creating song:", error);
@@ -92,11 +125,15 @@ export default function SongsPage() {
     }
   };
 
-  const filteredSongs = songs.filter(
-    (s) =>
-      s.title.toLowerCase().includes(search.toLowerCase()) ||
-      s.artist.toLowerCase().includes(search.toLowerCase())
-  );
+  const clearFilters = () => {
+    setFilterTitle("");
+    setFilterArtist("");
+    setFilterKey("");
+    setFilterTags("");
+    loadSongs();
+  };
+
+  const filteredSongs = songs;
 
   const toggleSong = (id: string) => {
     setSelected((prev) =>
@@ -136,21 +173,57 @@ export default function SongsPage() {
         </div>
       </div>
 
-      {/* Barra de búsqueda compacta */}
+      {/* Filtros de búsqueda */}
       <div className="bg-blanco p-4 lg:p-6 rounded-2xl shadow-lg mb-6 lg:mb-8">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-1 relative w-full">
-            <input
-              type="text"
-              placeholder="🔍 Buscar canciones por título o artista..."
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="text-xs lg:text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg whitespace-nowrap">
-            {filteredSongs.length} canciones encontradas
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Título"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
+            value={filterTitle}
+            onChange={(e) => setFilterTitle(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Artista"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
+            value={filterArtist}
+            onChange={(e) => setFilterArtist(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Tono (ej: G, C)"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
+            value={filterKey}
+            onChange={(e) => setFilterKey(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Etiqueta"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-4 focus:ring-terracota/20 transition-all duration-200 text-sm lg:text-base"
+            value={filterTags}
+            onChange={(e) => setFilterTags(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={runSearch}
+            disabled={searching}
+            className="bg-terracota text-blanco px-4 py-2 rounded-xl font-semibold hover:bg-terracota-dark transition-all duration-200 disabled:opacity-50 text-sm lg:text-base"
+          >
+            {searching ? "Buscando..." : "🔍 Buscar"}
+          </button>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-200 text-sm lg:text-base"
+          >
+            Limpiar filtros
+          </button>
+          <span className="text-xs lg:text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+            {filteredSongs.length} canciones
+          </span>
         </div>
       </div>
 
@@ -173,8 +246,15 @@ export default function SongsPage() {
               >
                 <h2 className="font-bold text-lg lg:text-xl text-gray-800 mb-1 line-clamp-2">{song.title}</h2>
                 <p className="text-terracota font-medium text-sm lg:text-base">{song.artist}</p>
-                <div className="mt-2 inline-block bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-xs">
-                  🎹 Tono: {song.key}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-xs">
+                    🎹 {song.key}
+                  </span>
+                  {Array.isArray(song.tags) && song.tags.length > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {song.tags.slice(0, 3).join(", ")}{song.tags.length > 3 ? "…" : ""}
+                    </span>
+                  )}
                 </div>
               </div>
               
@@ -197,7 +277,7 @@ export default function SongsPage() {
       </div>
 
       {/* Mensaje cuando no hay resultados */}
-      {filteredSongs.length === 0 && search && (
+      {filteredSongs.length === 0 && (filterTitle || filterArtist || filterKey || filterTags) && (
         <div className="text-center py-8 lg:py-12">
           <div className="text-4xl lg:text-6xl mb-4">🔍</div>
           <h3 className="text-lg lg:text-xl font-semibold text-gray-600 mb-2">No se encontraron canciones</h3>
@@ -206,7 +286,7 @@ export default function SongsPage() {
       )}
 
       {/* Mensaje cuando no hay canciones */}
-      {songs.length === 0 && !search && (
+      {songs.length === 0 && !filterTitle && !filterArtist && !filterKey && !filterTags && (
         <div className="text-center py-8 lg:py-12">
           <div className="text-4xl lg:text-6xl mb-4">🎵</div>
           <h3 className="text-lg lg:text-xl font-semibold text-gray-600 mb-2">No hay canciones en el banco</h3>

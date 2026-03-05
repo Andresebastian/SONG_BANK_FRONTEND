@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { searchSongsAdvanced } from "../utils/api";
 
 interface Song {
   _id: string;
   title: string;
   artist: string;
   key: string;
+  tags?: string[];
 }
 
 interface SongInSet {
@@ -51,6 +53,7 @@ export default function SetListModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [searchArtist, setSearchArtist] = useState("");
   const [searchKey, setSearchKey] = useState("");
+  const [searchTags, setSearchTags] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [selectedSongs, setSelectedSongs] = useState<{
     songId: string;
@@ -101,6 +104,7 @@ export default function SetListModal({
       setSearchTerm("");
       setSearchArtist("");
       setSearchKey("");
+      setSearchTags("");
       setError("");
     }
   }, [setList, isOpen]);
@@ -111,8 +115,7 @@ export default function SetListModal({
       setError("Token no disponible");
       return;
     }
-    
-    if (!searchTerm && !searchArtist && !searchKey) {
+    if (!searchTerm && !searchArtist && !searchKey && !searchTags) {
       setSearchResults([]);
       return;
     }
@@ -121,23 +124,13 @@ export default function SetListModal({
     setError("");
 
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('title', searchTerm);
-      if (searchArtist) params.append('artist', searchArtist);
-      if (searchKey) params.append('key', searchKey);
-
-      const response = await fetch(`/api/songs/search/advanced?${params.toString()}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
+      const data = await searchSongsAdvanced({
+        title: searchTerm.trim() || undefined,
+        artist: searchArtist.trim() || undefined,
+        key: searchKey.trim() || undefined,
+        tags: searchTags.trim() || undefined,
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data);
-      } else {
-        setError("Error al buscar canciones");
-      }
+      setSearchResults(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error searching songs:", error);
       setError("Error de conexión al buscar canciones");
@@ -236,6 +229,7 @@ export default function SetListModal({
         setSearchTerm("");
         setSearchArtist("");
         setSearchKey("");
+        setSearchTags("");
         setError("");
 
         // Notificar éxito y cerrar modal
@@ -353,6 +347,15 @@ export default function SetListModal({
                     disabled={mode === "view"}
                   />
                   
+                  <input
+                    type="text"
+                    placeholder="Buscar por etiqueta..."
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl transition-all duration-200 focus:border-terracota focus:ring-4 focus:ring-terracota/20"
+                    value={searchTags}
+                    onChange={(e) => setSearchTags(e.target.value)}
+                    disabled={mode === "view"}
+                  />
+                  
                   <button
                     onClick={searchSongs}
                     disabled={mode === "view" || isLoading}
@@ -391,6 +394,9 @@ export default function SetListModal({
                               <div className="font-medium">{song.title}</div>
                               <div className="text-sm text-gray-600">{song.artist}</div>
                               <div className="text-sm text-gray-500">🎹 {song.key}</div>
+                              {Array.isArray(song.tags) && song.tags.length > 0 && (
+                                <div className="text-xs text-gray-400 mt-0.5">{song.tags.join(", ")}</div>
+                              )}
                             </div>
                             <button
                               onClick={() => addSongToSetList(song)}
