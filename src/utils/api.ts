@@ -205,20 +205,33 @@ export const updateSong = async (id: string, data: {
   return await res.json();
 };
 
-export const createSongChordPro = async (chordProText: string, tags?: string[]) => {
+export const createSongChordPro = async (
+  chordProText: string,
+  options?: { tags?: string[]; youtubeUrl?: string }
+) => {
+  const body: { chordProText: string; tags?: string[]; youtubeUrl?: string } = { chordProText };
+  if (options?.tags?.length) body.tags = options.tags;
+  if (options?.youtubeUrl?.trim()) body.youtubeUrl = options.youtubeUrl.trim();
   const res = await fetch(`/api/songs/chordpro`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ chordProText, ...(tags?.length ? { tags } : {}) }),
+    body: JSON.stringify(body),
   });
   return await res.json();
 };
 
-export const updateSongChordPro = async (id: string, chordProText: string, tags?: string[]) => {
+export const updateSongChordPro = async (
+  id: string,
+  chordProText: string,
+  options?: { tags?: string[]; youtubeUrl?: string }
+) => {
+  const body: { chordProText: string; tags?: string[]; youtubeUrl?: string } = { chordProText };
+  if (options?.tags?.length) body.tags = options.tags;
+  if (options?.youtubeUrl !== undefined) body.youtubeUrl = options.youtubeUrl?.trim() || undefined;
   const res = await fetch(`/api/songs/${id}/chordpro`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ chordProText, ...(tags?.length ? { tags } : {}) }),
+    body: JSON.stringify(body),
   });
   return await res.json();
 };

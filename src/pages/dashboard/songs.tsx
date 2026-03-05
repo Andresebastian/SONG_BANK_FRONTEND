@@ -23,6 +23,7 @@ interface SongData {
   }[];
   notes?: string;
   tags?: string[];
+  youtubeUrl?: string;
   chordProText?: string;
 }
 
@@ -102,7 +103,10 @@ export default function SongsPage() {
   const handleCreateSong = async (songData: SongData) => {
     try {
       if (songData.chordProText) {
-        await createSongChordPro(songData.chordProText, songData.tags);
+        await createSongChordPro(songData.chordProText, {
+          tags: songData.tags,
+          youtubeUrl: songData.youtubeUrl,
+        });
       } else {
         if (!songData.title || !songData.artist || !songData.key || !songData.lyricsLines) {
           alert("Por favor completa todos los campos requeridos.");

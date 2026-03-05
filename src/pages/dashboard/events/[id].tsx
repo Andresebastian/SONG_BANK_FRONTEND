@@ -156,6 +156,7 @@ export default function EventDetailPage() {
     }[];
     notes?: string;
     tags?: string[];
+    youtubeUrl?: string;
     chordProText?: string;
   }) => {
     if (!selectedSongId) return;
@@ -164,7 +165,10 @@ export default function EventDetailPage() {
       let updatedSong;
       
       if (songData.chordProText) {
-        updatedSong = await updateSongChordPro(selectedSongId, songData.chordProText, songData.tags);
+        updatedSong = await updateSongChordPro(selectedSongId, songData.chordProText, {
+          tags: songData.tags,
+          youtubeUrl: songData.youtubeUrl,
+        });
       } else {
         updatedSong = await updateSong(selectedSongId, {
           title: songData.title || '',

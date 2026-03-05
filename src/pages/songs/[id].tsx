@@ -11,11 +11,25 @@ interface Song {
   title: string;
   artist: string;
   key: string;
+  youtubeUrl?: string;
   lyricsLines: {
     text: string;
     chords: { note: string; index: number }[];
     section?: string;
   }[];
+}
+
+/** Extrae el ID de video de una URL de YouTube (watch, youtu.be, embed). */
+function getYouTubeVideoId(url: string): string | null {
+  if (!url?.trim()) return null;
+  const trimmed = url.trim();
+  const watchMatch = trimmed.match(/(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) return watchMatch[1];
+  const shortMatch = trimmed.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return shortMatch[1];
+  const embedMatch = trimmed.match(/(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) return embedMatch[1];
+  return null;
 }
 
 // Función para verificar si el texto necesita corrección de espacios
@@ -210,6 +224,7 @@ export default function SongDetail() {
     }[];
     notes?: string;
     tags?: string[];
+    youtubeUrl?: string;
     chordProText?: string;
   }) => {
     if (!id) return;
@@ -218,7 +233,10 @@ export default function SongDetail() {
       let updatedSong;
       
       if (songData.chordProText) {
-        updatedSong = await updateSongChordPro(id as string, songData.chordProText, songData.tags);
+        updatedSong = await updateSongChordPro(id as string, songData.chordProText, {
+          tags: songData.tags,
+          youtubeUrl: songData.youtubeUrl,
+        });
       } else {
         updatedSong = await updateSong(id as string, {
           title: songData.title || '',
@@ -430,6 +448,23 @@ export default function SongDetail() {
             <span className="text-blue-800 font-medium">
               Vista desde evento - Tonalidad ajustada automáticamente
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Reproductor de YouTube */}
+      {song.youtubeUrl && getYouTubeVideoId(song.youtubeUrl) && (
+        <div className="mb-6">
+          <div className="bg-blanco rounded-2xl shadow-lg overflow-hidden">
+            <div className="aspect-video w-full max-w-2xl mx-auto">
+              <iframe
+                src={`https://www.youtube.com/embed/${getYouTubeVideoId(song.youtubeUrl)!}?rel=0`}
+                title={`Video: ${song.title}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
           </div>
         </div>
       )}
