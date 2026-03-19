@@ -519,7 +519,7 @@ export default function SongDetail() {
                       return (
                         <div className="relative min-w-0">
                           {/* Línea de acordes */}
-                          <div className={`${fontClasses.chord} font-mono text-terracota mb-1 leading-tight whitespace-pre overflow-x-auto`}>
+                          <div className={`${fontClasses.chord} ${fontClasses.lineHeight} font-mono text-terracota whitespace-pre overflow-x-auto`}>
                             {sortedChords.map((chord, idx) => {
                               const prevChord = idx > 0 ? sortedChords[idx - 1] : null;
                               const spaceBefore = prevChord 
@@ -538,7 +538,7 @@ export default function SongDetail() {
                           </div>
                           
                           {/* Línea de texto */}
-                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-mono text-gray-800 leading-relaxed whitespace-pre-wrap overflow-x-auto`}>
+                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-mono text-gray-800 whitespace-pre overflow-x-auto`}>
                             {text}
                           </div>
                         </div>
