@@ -493,6 +493,10 @@ export default function SongDetail() {
                      sectionName === 'bridge' ? '🌉 Puente' :
                      sectionName === 'intro' ? '🎼 Intro' :
                      sectionName === 'outro' ? '🎼 Outro' :
+                     sectionName === 'prechorus' ? '🎵 Pre-coro' :
+                     sectionName === 'instrumental' ? '🎹 Instrumental' :
+                     sectionName === 'solo' ? '🎹 Solo' :
+                     sectionName === 'break' ? '🎹 Break' :
                      `📋 ${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}`}
                   </h3>
                 </div>
