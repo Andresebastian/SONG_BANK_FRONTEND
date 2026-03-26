@@ -1,0 +1,26 @@
+{
+  "name": "Song Bank - Ministerio Quitumbe",
+  "short_name": "Song Bank",
+  "description": "Banco de canciones y acordes para el Ministerio de Alabanza Quitumbe",
+  "start_url": "/dashboard/songs",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#B8651A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "utilities"],
+  "lang": "es"
+}

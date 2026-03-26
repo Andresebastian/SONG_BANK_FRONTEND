@@ -483,96 +483,138 @@ export default function EventDetailPage() {
                 </div>
               </div>
 
-              {/* Contenido de la canción con acordes y letra */}
-              <div className="space-y-6">
-                {(() => {
-                  // Agrupar líneas por sección
-                  const sections: { [key: string]: (typeof selectedSong.lyricsLines[0] & { originalIndex: number })[] } = {};
-                  selectedSong.lyricsLines.forEach((line, index) => {
-                    const section = line.section || 'verse';
-                    if (!sections[section]) {
-                      sections[section] = [];
-                    }
-                    sections[section].push({ ...line, originalIndex: index });
+              {/* Contenido de la canción con acordes y letra - renderizado por segmentos */}
+              {(() => {
+                const sectionLabel = (name: string) => {
+                  const map: Record<string, string> = {
+                    verse: 'Verso', chorus: 'Coro', bridge: 'Puente',
+                    intro: 'Intro', outro: 'Outro', prechorus: 'Pre-coro',
+                    instrumental: 'Instrumental', solo: 'Solo', break: 'Break',
+                  };
+                  return map[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
+                };
+
+                const sections: { [key: string]: (typeof selectedSong.lyricsLines[0] & { originalIndex: number })[] } = {};
+                selectedSong.lyricsLines.forEach((line, index) => {
+                  const section = line.section || 'verse';
+                  if (!sections[section]) sections[section] = [];
+                  sections[section].push({ ...line, originalIndex: index });
+                });
+                const sectionEntries = Object.entries(sections);
+
+                const renderLine = (text: string, chords: { note: string; index: number }[]) => {
+                  const fc = getFontSizeClasses();
+                  if (chords.length === 0) {
+                    return (
+                      <div className={`${fc.lyric} font-medium text-gray-800 whitespace-pre-wrap`}>
+                        {text || '\u00A0'}
+                      </div>
+                    );
+                  }
+                  const sortedChords = [...chords].sort((a, b) => a.index - b.index);
+                  const textBefore = text.substring(0, sortedChords[0].index);
+                  const segments = sortedChords.map((chord, idx) => {
+                    const end = idx < sortedChords.length - 1 ? sortedChords[idx + 1].index : text.length;
+                    return { chord: chord.note, segText: text.substring(chord.index, end) };
                   });
-
-                  return Object.entries(sections).map(([sectionName, lines], sectionIndex) => (
-                    <div key={sectionIndex} className="space-y-4">
-                      {/* Título de la sección */}
-                      <div className="flex items-center">
-                        <h3 className="text-lg font-semibold text-terracota bg-terracota/10 px-4 py-2 rounded-lg">
-                          {sectionName === 'verse' ? '📝 Verso' : 
-                           sectionName === 'chorus' ? '🎵 Coro' :
-                           sectionName === 'bridge' ? '🌉 Puente' :
-                           sectionName === 'intro' ? '🎼 Intro' :
-                           sectionName === 'outro' ? '🎼 Outro' :
-                           `📋 ${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}`}
-                        </h3>
-                      </div>
-
-                      {/* Líneas de la sección */}
-                      <div className="space-y-4 ml-4">
-                        {lines.map((line, lineIndex) => {
-                          // Función para crear la línea de acordes posicionados arriba del texto
-                          const renderChordLine = (text: string, chords: { note: string; index: number }[]) => {
-                            if (chords.length === 0) {
-                              return <div className="h-4"></div>; // Espacio vacío si no hay acordes
-                            }
-
-                            const fontClasses = getFontSizeClasses();
-                            
-                            // Ordenar acordes por índice
-                            const sortedChords = [...chords].sort((a, b) => a.index - b.index);
-                            
-                            const chordElements: React.ReactElement[] = [];
-                            let lastIndex = 0;
-
-                            sortedChords.forEach((chord, chordIndex) => {
-                              // Agregar espacios antes del acorde para posicionarlo correctamente
-                              if (chord.index > lastIndex) {
-                                const spacesBefore = chord.index - lastIndex;
-                                chordElements.push(
-                                  <span key={`space-${chordIndex}`} className="inline-block" style={{ width: `${spacesBefore * fontClasses.chordSpacing}em` }}></span>
-                                );
-                              }
-
-                              // Agregar el acorde
-                              chordElements.push(
-                                <span
-                                  key={`chord-${chordIndex}`}
-                                  className={`bg-terracota/10 text-terracota px-1 py-0.5 rounded font-semibold inline-block ${fontClasses.chord}`}
-                                >
-                                  {chord.note}
-                                </span>
-                              );
-
-                              lastIndex = chord.index;
-                            });
-
-                            return (
-                              <div className={`font-mono text-terracota mb-1 leading-tight ${fontClasses.chord}`}>
-                                {chordElements}
-                              </div>
-                            );
-                          };
-
-                          return (
-                            <div key={lineIndex} className="border-b border-gray-100 pb-4 last:border-b-0">
-                              {/* Línea de acordes arriba */}
-                              {renderChordLine(line.text, line.chords)}
-                              
-                              {/* Línea de letra */}
-                              <div className={`${getFontSizeClasses().lyric} font-medium text-gray-800 leading-relaxed`}>
-                                {line.text}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  return (
+                    <div className="flex flex-wrap items-end">
+                      {textBefore ? (
+                        <span className="inline-flex flex-col">
+                          <span className={`${fc.chord} invisible pointer-events-none select-none`} aria-hidden="true">&nbsp;</span>
+                          <span className={`${fc.lyric} text-gray-800 whitespace-pre`}>{textBefore}</span>
+                        </span>
+                      ) : null}
+                      {segments.map((seg, idx) => (
+                        <span key={idx} className="inline-flex flex-col">
+                          <span className={`${fc.chord} font-bold text-terracota bg-terracota/10 px-1 rounded whitespace-nowrap leading-tight mb-0.5`}>
+                            {seg.chord}
+                          </span>
+                          <span className={`${fc.lyric} text-gray-800 whitespace-pre`}>
+                            {seg.segText || '\u00A0'}
+                          </span>
+                        </span>
+                      ))}
                     </div>
-                  ));
-                })()}
-              </div>
+                  );
+                };
+
+                // Navegación siguiente / anterior
+                const sortedSongs = event ? [...event.setId.songs].sort((a, b) => a.order - b.order) : [];
+                const currentIdx = sortedSongs.findIndex(s => s.songId === selectedSongId);
+
+                return (
+                  <>
+                    {/* Barra de navegación de secciones */}
+                    {sectionEntries.length > 1 && (
+                      <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
+                        {sectionEntries.map(([name], idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => document.getElementById(`ev-section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
+                          >
+                            {sectionLabel(name)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Secciones */}
+                    <div className="space-y-6 mb-8">
+                      {sectionEntries.map(([sectionName, lines], sectionIndex) => (
+                        <div key={sectionIndex} id={`ev-section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
+                          <div className="flex items-center">
+                            <h3 className="text-sm font-bold text-terracota bg-terracota/10 px-3 py-1.5 rounded-lg uppercase tracking-wide">
+                              {sectionLabel(sectionName)}
+                            </h3>
+                          </div>
+                          <div className="space-y-4 ml-4">
+                            {lines.map((line, lineIndex) => (
+                              <div key={lineIndex} className="border-b border-gray-100 pb-4 last:border-b-0">
+                                {renderLine(line.text, line.chords)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Navegación anterior / siguiente canción */}
+                    {sortedSongs.length > 1 && (
+                      <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            if (currentIdx > 0) {
+                              const prev = sortedSongs[currentIdx - 1];
+                              handleSelectSong(prev.songId, prev.transposeKey);
+                            }
+                          }}
+                          disabled={currentIdx <= 0}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:hover:bg-gray-100"
+                        >
+                          ← Anterior
+                        </button>
+                        <span className="text-sm text-gray-500 font-medium">
+                          {currentIdx + 1} / {sortedSongs.length}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (currentIdx < sortedSongs.length - 1) {
+                              const next = sortedSongs[currentIdx + 1];
+                              handleSelectSong(next.songId, next.transposeKey);
+                            }
+                          }}
+                          disabled={currentIdx >= sortedSongs.length - 1}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed bg-terracota text-white hover:bg-terracota-dark disabled:hover:bg-terracota"
+                        >
+                          Siguiente →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </>
           ) : null}
         </div>
