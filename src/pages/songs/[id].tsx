@@ -471,80 +471,98 @@ export default function SongDetail() {
 
       {/* Contenido de la canción */}
       <div className="bg-blanco rounded-2xl shadow-lg p-4 lg:p-8">
-        <div className="space-y-6 overflow-x-auto">
-          {(() => {
-            // Agrupar líneas por sección
-            const sections: { [key: string]: (typeof song.lyricsLines[0] & { originalIndex: number })[] } = {};
-            song.lyricsLines.forEach((line, index) => {
-              const section = line.section || 'verse';
-              if (!sections[section]) {
-                sections[section] = [];
-              }
-              sections[section].push({ ...line, originalIndex: index });
-            });
+        {(() => {
+          // Agrupar líneas por sección
+          const sections: { [key: string]: (typeof song.lyricsLines[0] & { originalIndex: number })[] } = {};
+          song.lyricsLines.forEach((line, index) => {
+            const section = line.section || 'verse';
+            if (!sections[section]) {
+              sections[section] = [];
+            }
+            sections[section].push({ ...line, originalIndex: index });
+          });
 
-            return Object.entries(sections).map(([sectionName, lines], sectionIndex) => (
-              <div key={sectionIndex} className="space-y-4">
-                {/* Título de la sección */}
-                <div className="flex items-center">
-                  <h3 className="text-lg font-semibold text-terracota bg-terracota/10 px-4 py-2 rounded-lg">
-                    {sectionName === 'verse' ? '📝 Verso' : 
-                     sectionName === 'chorus' ? '🎵 Coro' :
-                     sectionName === 'bridge' ? '🌉 Puente' :
-                     sectionName === 'intro' ? '🎼 Intro' :
-                     sectionName === 'outro' ? '🎼 Outro' :
-                     sectionName === 'prechorus' ? '🎵 Pre-coro' :
-                     sectionName === 'instrumental' ? '🎹 Instrumental' :
-                     sectionName === 'solo' ? '🎹 Solo' :
-                     sectionName === 'break' ? '🎹 Break' :
-                     `📋 ${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}`}
-                  </h3>
+          const sectionLabel = (name: string) => {
+            const map: Record<string, string> = {
+              verse: 'Verso', chorus: 'Coro', bridge: 'Puente',
+              intro: 'Intro', outro: 'Outro', prechorus: 'Pre-coro',
+              instrumental: 'Instrumental', solo: 'Solo', break: 'Break',
+            };
+            return map[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
+          };
+
+          const sectionEntries = Object.entries(sections);
+
+          return (
+            <>
+              {/* Barra de navegación de secciones */}
+              {sectionEntries.length > 1 && (
+                <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
+                  {sectionEntries.map(([name], idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        document.getElementById(`section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
+                    >
+                      {sectionLabel(name)}
+                    </button>
+                  ))}
                 </div>
+              )}
 
-                {/* Líneas de la sección */}
-                <div className="space-y-4 ml-4">
-                  {lines.map((line, lineIndex) => {
+              <div className="space-y-6">
+                {sectionEntries.map(([sectionName, lines], sectionIndex) => (
+                  <div key={sectionIndex} id={`section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
+                    {/* Título de la sección */}
+                    <div className="flex items-center">
+                      <h3 className="text-sm font-bold text-terracota bg-terracota/10 px-3 py-1.5 rounded-lg uppercase tracking-wide">
+                        {sectionLabel(sectionName)}
+                      </h3>
+                    </div>
+
+                    {/* Líneas de la sección */}
+                    <div className="space-y-4 ml-4">
+                      {lines.map((line, lineIndex) => {
                     const fontClasses = getFontSizeClasses();
                     
-                    // Función para renderizar la línea con acordes y texto
+                    // Renderizado por segmentos: cada acorde queda estructuralmente encima
+                    // de su texto correspondiente, sin depender de posicionamiento con espacios.
                     const renderLineWithChords = (text: string, chords: { note: string; index: number }[]) => {
                       if (chords.length === 0) {
-                        // Si no hay acordes, solo mostrar el texto
                         return (
-                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-medium text-gray-800 leading-relaxed whitespace-pre-wrap`}>
-                            {text}
+                          <div className={`${fontClasses.lyric} font-medium text-gray-800 whitespace-pre-wrap`}>
+                            {text || '\u00A0'}
                           </div>
                         );
                       }
 
-                      // Ordenar acordes por índice
                       const sortedChords = [...chords].sort((a, b) => a.index - b.index);
+                      const textBefore = text.substring(0, sortedChords[0].index);
+                      const segments = sortedChords.map((chord, idx) => {
+                        const end = idx < sortedChords.length - 1 ? sortedChords[idx + 1].index : text.length;
+                        return { chord: chord.note, segText: text.substring(chord.index, end) };
+                      });
 
                       return (
-                        <div className="relative min-w-0">
-                          {/* Línea de acordes */}
-                          <div className={`${fontClasses.chord} ${fontClasses.lineHeight} font-mono text-terracota whitespace-pre overflow-x-auto`}>
-                            {sortedChords.map((chord, idx) => {
-                              const prevChord = idx > 0 ? sortedChords[idx - 1] : null;
-                              const spaceBefore = prevChord 
-                                ? ' '.repeat(Math.max(0, chord.index - (prevChord.index + prevChord.note.length)))
-                                : ' '.repeat(chord.index);
-                              
-                              return (
-                                <React.Fragment key={idx}>
-                                  <span>{spaceBefore}</span>
-                                  <span className="bg-terracota/10 text-terracota px-1 py-0.5 rounded font-semibold inline-block">
-                                    {chord.note}
-                                  </span>
-                                </React.Fragment>
-                              );
-                            })}
-                          </div>
-                          
-                          {/* Línea de texto */}
-                          <div className={`${fontClasses.lyric} ${fontClasses.lineHeight} font-mono text-gray-800 whitespace-pre overflow-x-auto`}>
-                            {text}
-                          </div>
+                        <div className="flex flex-wrap items-end">
+                          {textBefore ? (
+                            <span className="inline-flex flex-col">
+                              <span className={`${fontClasses.chord} invisible pointer-events-none select-none`} aria-hidden="true">&nbsp;</span>
+                              <span className={`${fontClasses.lyric} text-gray-800 whitespace-pre`}>{textBefore}</span>
+                            </span>
+                          ) : null}
+                          {segments.map((seg, idx) => (
+                            <span key={idx} className="inline-flex flex-col">
+                              <span className={`${fontClasses.chord} font-bold text-terracota bg-terracota/10 px-1 rounded whitespace-nowrap leading-tight mb-0.5`}>
+                                {seg.chord}
+                              </span>
+                              <span className={`${fontClasses.lyric} text-gray-800 whitespace-pre`}>
+                                {seg.segText || '\u00A0'}
+                              </span>
+                            </span>
+                          ))}
                         </div>
                       );
                     };
@@ -554,13 +572,15 @@ export default function SongDetail() {
                         {renderLineWithChords(line.text, line.chords)}
                       </div>
                     );
-                  })}
-                </div>
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ));
-          })()}
-        </div>
-        
+            </>
+          );
+        })()}
+
         {/* Footer de la canción */}
         <div className="mt-8 pt-6 border-t border-gray-200">
           <div className="flex items-center justify-between text-sm text-gray-500">

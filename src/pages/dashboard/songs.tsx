@@ -232,49 +232,61 @@ export default function SongsPage() {
       </div>
 
       {/* Grid de canciones */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
         {filteredSongs.map((song) => {
           const isSelected = selected.includes(song._id);
           return (
             <div
               key={song._id}
-              className={`bg-blanco rounded-2xl p-4 lg:p-6 shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                isSelected 
-                  ? "ring-4 ring-green-400 bg-green-50 border-2 border-green-300" 
-                  : "hover:shadow-xl hover:ring-2 hover:ring-terracota/20"
+              className={`bg-white rounded-2xl shadow-sm border transition-all duration-200 flex flex-col overflow-hidden ${
+                isSelected
+                  ? "border-green-400 ring-2 ring-green-300 shadow-md"
+                  : "border-gray-200 hover:shadow-md hover:border-terracota/30"
               }`}
             >
-              <div 
-                className="mb-3 lg:mb-4 cursor-pointer"
+              {/* Franja de color según estado */}
+              <div className={`h-1 w-full ${isSelected ? 'bg-green-400' : 'bg-terracota'}`} />
+
+              <div
+                className="flex-1 p-4 lg:p-5 cursor-pointer"
                 onClick={() => router.push(`/songs/${song._id}`)}
               >
-                <h2 className="font-bold text-lg lg:text-xl text-gray-800 mb-1 line-clamp-2">{song.title}</h2>
-                <p className="text-terracota font-medium text-sm lg:text-base">{song.artist}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-xs">
-                    🎹 {song.key}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h2 className="font-bold text-base lg:text-lg text-gray-800 leading-snug line-clamp-2">{song.title}</h2>
+                  <span className="shrink-0 bg-terracota/10 text-terracota text-xs font-bold px-2 py-1 rounded-lg">
+                    {song.key}
                   </span>
-                  {Array.isArray(song.tags) && song.tags.length > 0 && (
-                    <span className="text-xs text-gray-500">
-                      {song.tags.slice(0, 3).join(", ")}{song.tags.length > 3 ? "…" : ""}
-                    </span>
-                  )}
                 </div>
+                <p className="text-gray-500 text-sm mb-3">{song.artist}</p>
+                {Array.isArray(song.tags) && song.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {song.tags.slice(0, 3).map((tag, i) => (
+                      <span key={i} className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                    {song.tags.length > 3 && (
+                      <span className="text-gray-400 text-xs px-1">+{song.tags.length - 3}</span>
+                    )}
+                  </div>
+                )}
               </div>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleSong(song._id);
-                }}
-                className={`w-full py-2 lg:py-3 px-3 lg:px-4 rounded-xl font-semibold transition-all duration-200 text-sm lg:text-base ${
-                  isSelected
-                    ? "bg-green-500 text-blanco hover:bg-green-600"
-                    : "bg-terracota text-blanco hover:bg-terracota-dark"
-                }`}
-              >
-                {isSelected ? "✅ Añadida al domingo" : "➕ Añadir al domingo"}
-              </button>
+
+              <div className="px-4 lg:px-5 pb-4 lg:pb-5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSong(song._id);
+                  }}
+                  className={`w-full py-2 rounded-xl font-semibold transition-all duration-200 text-sm ${
+                    isSelected
+                      ? "bg-green-500 text-white hover:bg-green-600"
+                      : "bg-terracota text-white hover:bg-terracota-dark"
+                  }`}
+                >
+                  {isSelected ? "✓ En el domingo" : "+ Añadir al domingo"}
+                </button>
+              </div>
             </div>
           );
         })}
