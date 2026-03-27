@@ -140,7 +140,39 @@ export default function SongDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
   const [copied, setCopied] = useState(false);
-  
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+
+  // ─── Lógica de sugerencia de tonalidad por voz ───────────────────────────
+  const ALL_KEYS_ORDERED = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const VOICE_PREFERRED_KEYS: Record<string, string[]> = {
+    'Bajo':      ['C', 'D', 'E', 'F'],
+    'Barítono':  ['D', 'E', 'F', 'G'],
+    'Tenor':     ['G', 'A', 'A#', 'B', 'C'],
+    'Contralto': ['E', 'F', 'G', 'A'],
+    'Mezzo':     ['F', 'G', 'A', 'A#'],
+    'Soprano':   ['A', 'A#', 'B', 'C', 'D'],
+  };
+
+  function semitoneDistance(from: string, to: string): number {
+    const a = ALL_KEYS_ORDERED.indexOf(from);
+    const b = ALL_KEYS_ORDERED.indexOf(to);
+    const diff = ((b - a) + 12) % 12;
+    return diff > 6 ? diff - 12 : diff;
+  }
+
+  function suggestKeyForVoice(currentKey: string, voice: string) {
+    const preferred = VOICE_PREFERRED_KEYS[voice];
+    if (!preferred) return null;
+    if (preferred.includes(currentKey)) return { key: currentKey, semitones: 0, already: true };
+    let bestKey = preferred[0];
+    let bestDist = Math.abs(semitoneDistance(currentKey, preferred[0]));
+    for (const k of preferred) {
+      const d = Math.abs(semitoneDistance(currentKey, k));
+      if (d < bestDist) { bestDist = d; bestKey = k; }
+    }
+    return { key: bestKey, semitones: semitoneDistance(currentKey, bestKey), already: false };
+  }
+
   // Obtener parámetros de navegación
   const returnTo = router.query.returnTo as string;
   const eventId = router.query.eventId as string;
@@ -448,8 +480,8 @@ export default function SongDetail() {
 
             {/* Botones de acción */}
             <div className="flex gap-2 lg:gap-3">
-              <button 
-                onClick={() => setShowTransposeModal(true)}
+              <button
+                onClick={() => { setShowTransposeModal(true); setSelectedVoice(null); }}
                 className="bg-blue-500 text-blanco px-3 lg:px-4 py-2 rounded-xl font-medium hover:bg-blue-600 transition-all duration-200 text-sm lg:text-base flex-1 sm:flex-none"
                 disabled={transposing}
               >
@@ -636,37 +668,94 @@ export default function SongDetail() {
       {showTransposeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-blanco rounded-2xl p-6 lg:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl lg:text-2xl font-bold text-gray-800 mb-4">🎹 Cambiar Tonalidad</h3>
-            <p className="text-sm lg:text-base text-gray-600 mb-6">
-              Selecciona la nueva tonalidad para <strong>&ldquo;{song?.title}&rdquo;</strong>
+            <h3 className="text-xl lg:text-2xl font-bold text-gray-800 mb-2">🎹 Cambiar Tonalidad</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              Tono actual: <strong className="text-terracota">{song?.key}</strong> — &ldquo;{song?.title}&rdquo;
             </p>
-            
+
+            {/* Sugerencia por tipo de voz */}
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">🎤 Sugerir por tipo de voz</p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {Object.keys(VOICE_PREFERRED_KEYS).map((voice) => (
+                  <button
+                    key={voice}
+                    onClick={() => setSelectedVoice((prev) => (prev === voice ? null : voice))}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      selectedVoice === voice
+                        ? 'bg-terracota text-white shadow-sm'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:border-terracota hover:text-terracota'
+                    }`}
+                  >
+                    {voice}
+                  </button>
+                ))}
+              </div>
+              {selectedVoice && song && (() => {
+                const s = suggestKeyForVoice(song.key, selectedVoice);
+                if (!s) return null;
+                if (s.already) return (
+                  <p className="text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                    ✅ El tono <strong>{song.key}</strong> ya es ideal para <strong>{selectedVoice}</strong>
+                  </p>
+                );
+                const dir = s.semitones > 0 ? 'arriba' : 'abajo';
+                const abs = Math.abs(s.semitones);
+                return (
+                  <div className="flex items-center gap-2">
+                    <p className="flex-1 text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                      Para <strong>{selectedVoice}</strong>: <strong>{s.key}</strong>
+                      <span className="text-blue-500 font-normal"> ({abs} semitono{abs > 1 ? 's' : ''} {dir})</span>
+                    </p>
+                    <button
+                      onClick={() => { handleTranspose(s.key); setSelectedVoice(null); }}
+                      disabled={transposing}
+                      className="bg-terracota text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-terracota-dark transition-all duration-200 shrink-0 disabled:opacity-50"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Grilla de tonos */}
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">O elige manualmente</p>
             <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3 mb-6">
-              {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => handleTranspose(key)}
-                  disabled={transposing}
-                  className={`p-2 lg:p-3 rounded-xl font-semibold transition-all duration-200 text-sm lg:text-base ${
-                    key === song?.key
-                      ? 'bg-terracota text-blanco ring-2 ring-terracota'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  } ${transposing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {key}
-                </button>
-              ))}
+              {ALL_KEYS_ORDERED.map((key) => {
+                const suggestion = selectedVoice ? suggestKeyForVoice(song?.key ?? '', selectedVoice) : null;
+                const isSuggested = suggestion && !suggestion.already && suggestion.key === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleTranspose(key)}
+                    disabled={transposing}
+                    className={`p-2 lg:p-3 rounded-xl font-semibold transition-all duration-200 text-sm lg:text-base relative ${
+                      key === song?.key
+                        ? 'bg-terracota text-white ring-2 ring-terracota'
+                        : isSuggested
+                          ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-400'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } ${transposing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {key}
+                    {isSuggested && (
+                      <span className="absolute -top-1.5 -right-1.5 text-[9px] bg-blue-500 text-white rounded-full px-1 leading-4">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowTransposeModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
-                disabled={transposing}
-              >
-                Cancelar
-              </button>
-            </div>
+
+            <button
+              onClick={() => { setShowTransposeModal(false); setSelectedVoice(null); }}
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
+              disabled={transposing}
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
