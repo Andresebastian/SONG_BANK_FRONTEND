@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../components/LayoutDashboard";
 import SongModal from "../../components/SongModal";
@@ -129,6 +129,19 @@ export default function SongsPage() {
     }
   };
 
+  // Debounce: búsqueda automática 400ms después de que el usuario deja de escribir
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runSearchRef = useRef(runSearch);
+  useEffect(() => { runSearchRef.current = runSearch; }, [runSearch]);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearchRef.current(), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [filterTitle, filterArtist, filterKey, filterTags]);
+
   const clearFilters = () => {
     setFilterTitle("");
     setFilterArtist("");
@@ -210,14 +223,9 @@ export default function SongsPage() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={runSearch}
-            disabled={searching}
-            className="bg-terracota text-blanco px-4 py-2 rounded-xl font-semibold hover:bg-terracota-dark transition-all duration-200 disabled:opacity-50 text-sm lg:text-base"
-          >
-            {searching ? "Buscando..." : "🔍 Buscar"}
-          </button>
+          {searching && (
+            <span className="text-xs text-terracota font-semibold animate-pulse">🔍 Buscando...</span>
+          )}
           <button
             type="button"
             onClick={clearFilters}
