@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "song-bank-mobile",
+    "slug": "song-bank-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A0F08"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.acym.songbank",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#D2691E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3bae8473-6cca-414d-9ea8-446a048ed5ad"
+      }
+    }
+  }
+}
