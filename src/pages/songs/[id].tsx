@@ -139,6 +139,7 @@ export default function SongDetail() {
   const [showTransposeModal, setShowTransposeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
+  const [copied, setCopied] = useState(false);
   
   // Obtener parámetros de navegación
   const returnTo = router.query.returnTo as string;
@@ -259,6 +260,36 @@ export default function SongDetail() {
     } catch (error) {
       console.error('Error al actualizar canción:', error);
       alert('Error al actualizar la canción. Inténtalo de nuevo.');
+    }
+  };
+
+  const copyLyrics = async () => {
+    if (!song) return;
+    const SECTION_NAMES: Record<string, string> = {
+      verse: 'Estrofa', chorus: 'Coro', bridge: 'Puente',
+      prechorus: 'Pre-coro', intro: 'Intro', outro: 'Outro',
+      instrumental: 'Instrumental', solo: 'Solo', break: 'Break',
+    };
+    const sections: Record<string, typeof song.lyricsLines> = {};
+    song.lyricsLines.forEach((line) => {
+      const sec = line.section || 'verse';
+      if (!sections[sec]) sections[sec] = [];
+      sections[sec].push(line);
+    });
+    const header = `${song.title}\n${song.artist} | Tono: ${song.key}\n`;
+    const body = Object.entries(sections)
+      .map(([name, lines]) => {
+        const label = SECTION_NAMES[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
+        const text = lines.map((l) => l.text).join('\n');
+        return `\n■ ${label.toUpperCase()}\n${text}`;
+      })
+      .join('\n');
+    try {
+      await navigator.clipboard.writeText(header + body);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('No se pudo copiar. Intenta manualmente.');
     }
   };
 
@@ -427,7 +458,18 @@ export default function SongDetail() {
                 <span className="hidden lg:inline">Cambiar Tonalidad</span>
                 <span className="lg:hidden">Tonalidad</span>
               </button>
-              <button 
+              <button
+                onClick={copyLyrics}
+                className={`px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm lg:text-base border ${
+                  copied
+                    ? 'bg-green-500 text-white border-green-500'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
+                }`}
+                title="Copiar letra al portapapeles"
+              >
+                {copied ? '✓ Copiado' : '📋'}
+              </button>
+              <button
                 onClick={() => setShowEditModal(true)}
                 className="bg-terracota text-blanco px-3 lg:px-4 py-2 rounded-xl font-medium hover:bg-terracota-dark transition-all duration-200 text-sm lg:text-base"
               >
