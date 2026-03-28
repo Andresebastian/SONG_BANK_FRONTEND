@@ -237,6 +237,23 @@ export const updateSongChordPro = async (
 };
 
 // Función para guardar el token en localStorage
+export const archiveEvent = async (id: string) => {
+  const res = await fetch(`/api/events/${id}/archive`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+  });
+  return res.json();
+};
+
+export const sendPushNotification = async (title: string, body: string) => {
+  const res = await fetch(`/api/events/notifications/send`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ title, body }),
+  });
+  return res.json();
+};
+
 export const setToken = (token: string): void => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('token', token);
