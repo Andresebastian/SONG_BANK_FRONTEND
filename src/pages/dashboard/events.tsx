@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../components/LayoutDashboard";
 import EventModal from "../../components/eventModal";
-import { getEvents } from "../../utils/api";
+import { getEvents, archiveEvent, sendPushNotification } from "../../utils/api";
 
 interface SongInSet {
   songId: string;
@@ -43,6 +43,11 @@ export default function EventsPage() {
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view">("create");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody] = useState('');
+  const [sendingNotif, setSendingNotif] = useState(false);
 
   // Obtener token del localStorage solo en el cliente
   useEffect(() => {
@@ -100,6 +105,33 @@ export default function EventsPage() {
     }
   };
 
+  const handleArchive = async (eventId: string) => {
+    if (!confirm('¿Archivar este evento? Quedará inactivo.')) return;
+    setArchivingId(eventId);
+    try {
+      await archiveEvent(eventId);
+      await loadEvents();
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  const handleSendNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+    setSendingNotif(true);
+    try {
+      const res = await sendPushNotification(notifTitle.trim(), notifBody.trim());
+      alert(`✅ Notificación enviada a ${res.sent ?? 0} dispositivo(s)`);
+      setShowNotifModal(false);
+      setNotifTitle('');
+      setNotifBody('');
+    } catch {
+      alert('Error al enviar la notificación');
+    } finally {
+      setSendingNotif(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
@@ -116,19 +148,27 @@ export default function EventsPage() {
   return (
     <LayoutDashboard>
       {/* Header con título y botón de acción */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Gestión de Eventos</h1>
           <p className="text-gray-600">Organiza y administra los eventos de la iglesia</p>
         </div>
-        {events.length > 0 && (
+        <div className="flex gap-3 flex-wrap">
           <button
-            className="bg-terracota text-blanco px-6 py-3 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200"
-            onClick={() => openModal("create")}
+            className="bg-gray-100 text-gray-700 px-5 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 border border-gray-200"
+            onClick={() => setShowNotifModal(true)}
           >
-            ➕ Crear Nuevo Evento
+            📣 Enviar mensaje
           </button>
-        )}
+          {events.length > 0 && (
+            <button
+              className="bg-terracota text-blanco px-6 py-3 rounded-xl font-semibold shadow-lg hover:bg-terracota-dark transform hover:scale-105 transition-all duration-200"
+              onClick={() => openModal("create")}
+            >
+              ➕ Crear Nuevo Evento
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grid de eventos */}
@@ -171,12 +211,12 @@ export default function EventsPage() {
             </div>
 
             {/* Botones de acción */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 className="flex-1 bg-terracota text-blanco py-2 px-4 rounded-xl font-medium hover:bg-terracota-dark transition-all duration-200"
                 onClick={() => router.push(`/dashboard/events/${event._id}`)}
               >
-                👁️ Ver Detalles
+                👁️ Ver
               </button>
               <button
                 className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
@@ -184,6 +224,16 @@ export default function EventsPage() {
               >
                 ✏️ Editar
               </button>
+              {event.status !== 'archived' && (
+                <button
+                  className="bg-gray-100 text-gray-500 py-2 px-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200 disabled:opacity-50"
+                  onClick={() => handleArchive(event._id)}
+                  disabled={archivingId === event._id}
+                  title="Archivar evento"
+                >
+                  {archivingId === event._id ? '⏳' : '📁'}
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -204,11 +254,64 @@ export default function EventsPage() {
         </div>
       )}
 
-      <EventModal 
-        isOpen={isModalOpen} 
+      {/* Modal de notificación personalizada */}
+      {showNotifModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-800 mb-1">📣 Enviar mensaje push</h3>
+            <p className="text-sm text-gray-500 mb-5">Se enviará a todos los músicos con la app instalada</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Título</label>
+                <input
+                  type="text"
+                  value={notifTitle}
+                  onChange={(e) => setNotifTitle(e.target.value)}
+                  placeholder="Ej: Recordatorio de ensayo"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracota/30"
+                  maxLength={60}
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{notifTitle.length}/60</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Mensaje</label>
+                <textarea
+                  value={notifBody}
+                  onChange={(e) => setNotifBody(e.target.value)}
+                  placeholder="Ej: El ensayo de hoy es a las 7pm. ¡No faltes!"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracota/30 resize-none"
+                  rows={3}
+                  maxLength={200}
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{notifBody.length}/200</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowNotifModal(false); setNotifTitle(''); setNotifBody(''); }}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition-all"
+                disabled={sendingNotif}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendNotification}
+                disabled={sendingNotif || !notifTitle.trim() || !notifBody.trim()}
+                className="flex-1 bg-terracota text-white py-2.5 rounded-xl font-semibold hover:bg-terracota-dark transition-all disabled:opacity-50"
+              >
+                {sendingNotif ? '⏳ Enviando...' : '📤 Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <EventModal
+        isOpen={isModalOpen}
         onClose={closeModal}
         onSave={() => {
-          // Recargar la lista de eventos después de crear/editar uno
           loadEvents();
         }}
         event={selectedEvent}
