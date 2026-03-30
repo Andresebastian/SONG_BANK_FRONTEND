@@ -297,24 +297,29 @@ export default function SongDetail() {
 
   const copyLyrics = async () => {
     if (!song) return;
-    const SECTION_NAMES: Record<string, string> = {
+    const sectionLabelMap: Record<string, string> = {
       verse: 'Estrofa', chorus: 'Coro', bridge: 'Puente',
       prechorus: 'Pre-coro', intro: 'Intro', outro: 'Outro',
       instrumental: 'Instrumental', solo: 'Solo', break: 'Break',
     };
-    const sections: Record<string, typeof song.lyricsLines> = {};
+    // Bloques consecutivos para preservar el orden real
+    const blocks: { label: string; lines: typeof song.lyricsLines }[] = [];
+    const counts: Record<string, number> = {};
     song.lyricsLines.forEach((line) => {
       const sec = line.section || 'verse';
-      if (!sections[sec]) sections[sec] = [];
-      sections[sec].push(line);
+      const last = blocks[blocks.length - 1];
+      const base = sectionLabelMap[sec] ?? sec.charAt(0).toUpperCase() + sec.slice(1);
+      if (last && last.label.startsWith(base)) {
+        last.lines.push(line);
+      } else {
+        counts[sec] = (counts[sec] ?? 0) + 1;
+        const label = counts[sec] > 1 ? `${base} ${counts[sec]}` : base;
+        blocks.push({ label, lines: [line] });
+      }
     });
     const header = `${song.title}\n${song.artist} | Tono: ${song.key}\n`;
-    const body = Object.entries(sections)
-      .map(([name, lines]) => {
-        const label = SECTION_NAMES[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
-        const text = lines.map((l) => l.text).join('\n');
-        return `\n■ ${label.toUpperCase()}\n${text}`;
-      })
+    const body = blocks
+      .map(({ label, lines }) => `\n■ ${label.toUpperCase()}\n${lines.map((l) => l.text).join('\n')}`)
       .join('\n');
     try {
       await navigator.clipboard.writeText(header + body);
@@ -546,16 +551,6 @@ export default function SongDetail() {
       {/* Contenido de la canción */}
       <div className="bg-blanco rounded-2xl shadow-lg p-4 lg:p-8">
         {(() => {
-          // Agrupar líneas por sección
-          const sections: { [key: string]: (typeof song.lyricsLines[0] & { originalIndex: number })[] } = {};
-          song.lyricsLines.forEach((line, index) => {
-            const section = line.section || 'verse';
-            if (!sections[section]) {
-              sections[section] = [];
-            }
-            sections[section].push({ ...line, originalIndex: index });
-          });
-
           const sectionLabel = (name: string) => {
             const map: Record<string, string> = {
               verse: 'Verso', chorus: 'Coro', bridge: 'Puente',
@@ -565,34 +560,54 @@ export default function SongDetail() {
             return map[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
           };
 
-          const sectionEntries = Object.entries(sections);
+          // Agrupar líneas en bloques consecutivos (preserva el orden real de la canción)
+          type SectionBlock = { key: string; name: string; label: string; lines: (typeof song.lyricsLines[0] & { originalIndex: number })[] };
+          const sectionEntries: SectionBlock[] = [];
+          const sectionCounts: Record<string, number> = {};
+          song.lyricsLines.forEach((line, index) => {
+            const sec = line.section || 'verse';
+            const last = sectionEntries[sectionEntries.length - 1];
+            if (last && last.name === sec) {
+              last.lines.push({ ...line, originalIndex: index });
+            } else {
+              sectionCounts[sec] = (sectionCounts[sec] ?? 0) + 1;
+              const count = sectionCounts[sec];
+              const base = sectionLabel(sec);
+              sectionEntries.push({
+                key: `${sec}-${count}`,
+                name: sec,
+                label: count > 1 ? `${base} ${count}` : base,
+                lines: [{ ...line, originalIndex: index }],
+              });
+            }
+          });
 
           return (
             <>
               {/* Barra de navegación de secciones */}
               {sectionEntries.length > 1 && (
                 <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
-                  {sectionEntries.map(([name], idx) => (
+                  {sectionEntries.map(({ key, label }) => (
                     <button
-                      key={idx}
+                      key={key}
                       onClick={() => {
-                        document.getElementById(`section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        document.getElementById(`section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                       className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
                     >
-                      {sectionLabel(name)}
+                      {label}
                     </button>
                   ))}
                 </div>
               )}
 
               <div className="space-y-6">
-                {sectionEntries.map(([sectionName, lines], sectionIndex) => (
-                  <div key={sectionIndex} id={`section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
+                {sectionEntries.map(({ key, label, lines }) => (
+                  <div key={key} id={`section-${key}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
                     {/* Título de la sección */}
                     <div className="flex items-center">
                       <h3 className="text-sm font-bold text-terracota bg-terracota/10 px-3 py-1.5 rounded-lg uppercase tracking-wide">
-                        {sectionLabel(sectionName)}
+                        {label}
                       </h3>
                     </div>
 
