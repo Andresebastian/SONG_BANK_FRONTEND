@@ -139,6 +139,7 @@ export default function SongDetail() {
   const [showTransposeModal, setShowTransposeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
+  const [isDark, setIsDark] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
 
@@ -500,11 +501,22 @@ export default function SongDetail() {
                 className={`px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm lg:text-base border ${
                   copied
                     ? 'bg-green-500 text-white border-green-500'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
+                    : isDark ? 'bg-gray-700 text-gray-200 border-gray-600 hover:border-terracota hover:text-terracota' : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
                 }`}
                 title="Copiar letra al portapapeles"
               >
                 {copied ? '✓ Copiado' : '📋'}
+              </button>
+              <button
+                onClick={() => setIsDark(d => !d)}
+                className={`px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm lg:text-base border ${
+                  isDark
+                    ? 'bg-gray-800 text-yellow-300 border-gray-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
+                }`}
+                title={isDark ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {isDark ? '☀️' : '🌙'}
               </button>
               <button
                 onClick={() => setShowEditModal(true)}
@@ -549,7 +561,7 @@ export default function SongDetail() {
       )}
 
       {/* Contenido de la canción */}
-      <div className="bg-blanco rounded-2xl shadow-lg p-4 lg:p-8">
+      <div className={`rounded-2xl shadow-lg p-4 lg:p-8 transition-colors duration-300 ${isDark ? 'bg-gray-900' : 'bg-blanco'}`}>
         {(() => {
           const sectionLabel = (name: string) => {
             const map: Record<string, string> = {
@@ -586,7 +598,7 @@ export default function SongDetail() {
             <>
               {/* Barra de navegación de secciones */}
               {sectionEntries.length > 1 && (
-                <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
+                <div className={`flex flex-wrap gap-2 mb-6 pb-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
                   {sectionEntries.map(({ key, label }) => (
                     <button
                       key={key}
@@ -618,10 +630,12 @@ export default function SongDetail() {
                     
                     // Renderizado por segmentos: cada acorde queda estructuralmente encima
                     // de su texto correspondiente, sin depender de posicionamiento con espacios.
+                    const lyricClass = isDark ? 'text-gray-100' : 'text-gray-800';
+                    const chordClass = isDark ? 'text-orange-400 bg-orange-400/20' : 'text-terracota bg-terracota/10';
                     const renderLineWithChords = (text: string, chords: { note: string; index: number }[]) => {
                       if (chords.length === 0) {
                         return (
-                          <div className={`${fontClasses.lyric} font-medium text-gray-800 whitespace-pre-wrap`}>
+                          <div className={`${fontClasses.lyric} font-medium ${lyricClass} whitespace-pre-wrap`}>
                             {text || '\u00A0'}
                           </div>
                         );
@@ -639,15 +653,15 @@ export default function SongDetail() {
                           {textBefore ? (
                             <span className="inline-flex flex-col">
                               <span className={`${fontClasses.chord} invisible pointer-events-none select-none`} aria-hidden="true">&nbsp;</span>
-                              <span className={`${fontClasses.lyric} text-gray-800 whitespace-pre`}>{textBefore}</span>
+                              <span className={`${fontClasses.lyric} ${lyricClass} whitespace-pre`}>{textBefore}</span>
                             </span>
                           ) : null}
                           {segments.map((seg, idx) => (
                             <span key={idx} className="inline-flex flex-col">
-                              <span className={`${fontClasses.chord} font-bold text-terracota bg-terracota/10 px-1 rounded whitespace-nowrap leading-tight mb-0.5`}>
+                              <span className={`${fontClasses.chord} font-bold ${chordClass} px-1 rounded whitespace-nowrap leading-tight mb-0.5`}>
                                 {seg.chord}
                               </span>
-                              <span className={`${fontClasses.lyric} text-gray-800 whitespace-pre`}>
+                              <span className={`${fontClasses.lyric} ${lyricClass} whitespace-pre`}>
                                 {seg.segText || '\u00A0'}
                               </span>
                             </span>
@@ -657,7 +671,7 @@ export default function SongDetail() {
                     };
 
                     return (
-                      <div key={lineIndex} className="border-b border-gray-100 pb-4 last:border-b-0">
+                      <div key={lineIndex} className={`border-b pb-4 last:border-b-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
                         {renderLineWithChords(line.text, line.chords)}
                       </div>
                     );
