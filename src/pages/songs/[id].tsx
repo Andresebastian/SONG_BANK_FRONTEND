@@ -139,7 +139,6 @@ export default function SongDetail() {
   const [showTransposeModal, setShowTransposeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
-  const [isDark, setIsDark] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
 
@@ -501,22 +500,11 @@ export default function SongDetail() {
                 className={`px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm lg:text-base border ${
                   copied
                     ? 'bg-green-500 text-white border-green-500'
-                    : isDark ? 'bg-gray-700 text-gray-200 border-gray-600 hover:border-terracota hover:text-terracota' : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
                 }`}
                 title="Copiar letra al portapapeles"
               >
                 {copied ? '✓ Copiado' : '📋'}
-              </button>
-              <button
-                onClick={() => setIsDark(d => !d)}
-                className={`px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm lg:text-base border ${
-                  isDark
-                    ? 'bg-gray-800 text-yellow-300 border-gray-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-terracota hover:text-terracota'
-                }`}
-                title={isDark ? 'Modo claro' : 'Modo oscuro'}
-              >
-                {isDark ? '☀️' : '🌙'}
               </button>
               <button
                 onClick={() => setShowEditModal(true)}
@@ -561,7 +549,7 @@ export default function SongDetail() {
       )}
 
       {/* Contenido de la canción */}
-      <div className={`rounded-2xl shadow-lg p-4 lg:p-8 transition-colors duration-300 ${isDark ? 'bg-gray-900' : 'bg-blanco'}`}>
+      <div className="bg-blanco rounded-2xl shadow-lg p-4 lg:p-8">
         {(() => {
           const sectionLabel = (name: string) => {
             const map: Record<string, string> = {
@@ -598,18 +586,20 @@ export default function SongDetail() {
             <>
               {/* Barra de navegación de secciones */}
               {sectionEntries.length > 1 && (
-                <div className={`flex flex-wrap gap-2 mb-6 pb-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                  {sectionEntries.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        document.getElementById(`section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}
-                      className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm -mx-4 lg:-mx-8 px-4 lg:px-8 py-3 mb-6 border-b border-gray-100 shadow-sm">
+                  <div className="flex flex-wrap gap-2">
+                    {sectionEntries.map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          document.getElementById(`section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -630,8 +620,8 @@ export default function SongDetail() {
                     
                     // Renderizado por segmentos: cada acorde queda estructuralmente encima
                     // de su texto correspondiente, sin depender de posicionamiento con espacios.
-                    const lyricClass = isDark ? 'text-gray-100' : 'text-gray-800';
-                    const chordClass = isDark ? 'text-orange-400 bg-orange-400/20' : 'text-terracota bg-terracota/10';
+                    const lyricClass = 'text-gray-800';
+                    const chordClass = 'text-terracota bg-terracota/10';
                     const renderLineWithChords = (text: string, chords: { note: string; index: number }[]) => {
                       if (chords.length === 0) {
                         return (
@@ -671,7 +661,7 @@ export default function SongDetail() {
                     };
 
                     return (
-                      <div key={lineIndex} className={`border-b pb-4 last:border-b-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <div key={lineIndex} className="border-b border-gray-100 pb-4 last:border-b-0">
                         {renderLineWithChords(line.text, line.chords)}
                       </div>
                     );
