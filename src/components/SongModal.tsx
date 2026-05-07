@@ -55,6 +55,8 @@ interface ParsedSong {
   sections: ParsedSection[];
 }
 
+type InputFormat = "chordpro" | "stacked";
+
 const SECTION_LABELS: Record<string, string> = {
   verse:      "Estrofa",
   chorus:     "Coro",
@@ -139,6 +141,115 @@ function parseChordPro(text: string): ParsedSong {
   return result;
 }
 
+function isChordToken(token: string): boolean {
+  return /^[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add)?\d*(?:\/[A-G](?:#|b)?)?$/i.test(token.trim());
+}
+
+function isChordLine(line: string): boolean {
+  const tokens = line.trim().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every(isChordToken);
+}
+
+function insertChordsInLyric(chordLine: string, lyricLine: string): string {
+  const chords = [...chordLine.matchAll(/\S+/g)]
+    .map((match) => ({ note: match[0], column: match.index ?? 0 }))
+    .filter((chord) => isChordToken(chord.note));
+
+  if (chords.length === 0) return lyricLine;
+
+  const lyric = lyricLine.trimEnd();
+  const wordStarts = [...lyric.matchAll(/\S+/g)].map((match) => match.index ?? 0);
+  const useColumns = chordLine.length > lyric.length * 0.45;
+
+  const positions = chords.map((chord, index) => {
+    if (useColumns) return Math.min(chord.column, lyric.length);
+    if (index === 0) return 0;
+    if (chords.length === 2 && wordStarts.length > 1) return wordStarts[wordStarts.length - 1];
+    if (wordStarts.length === 0) return lyric.length;
+    const wordIndex = Math.round((index * (wordStarts.length - 1)) / Math.max(1, chords.length - 1));
+    return wordStarts[wordIndex] ?? lyric.length;
+  });
+
+  let result = lyric;
+  chords
+    .map((chord, index) => ({ ...chord, position: positions[index] }))
+    .sort((a, b) => b.position - a.position)
+    .forEach((chord) => {
+      result = result.slice(0, chord.position) + `[${chord.note}]` + result.slice(chord.position);
+    });
+
+  return result;
+}
+
+function convertStackedChordsToChordPro(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const output: string[] = [];
+  let hasSection = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      output.push("");
+      continue;
+    }
+
+    const meta = line.match(/^(title|artist|key|notes):\s*(.+)$/i);
+    if (meta) {
+      output.push(`{${meta[1].toLowerCase()}: ${meta[2].trim()}}`);
+      continue;
+    }
+
+    const section = line.match(/^(intro|interlude|estrofa|verso|verse|pre[-\s]?coro|prechorus|coro|chorus|puente|bridge|outro|instrumental|solo|break):?$/i);
+    if (section) {
+      const sectionMap: Record<string, string> = {
+        estrofa: "verse",
+        verso: "verse",
+        coro: "chorus",
+        puente: "bridge",
+        "pre-coro": "prechorus",
+        "pre coro": "prechorus",
+      };
+      const normalized = section[1].toLowerCase();
+      output.push(`{${sectionMap[normalized] ?? normalized}}`);
+      hasSection = true;
+      continue;
+    }
+
+    if (isChordLine(rawLine) && i + 1 < lines.length && !isChordLine(lines[i + 1]) && lines[i + 1].trim()) {
+      if (!hasSection && !output.some((value) => /^\{(?:verse|chorus|bridge|intro|outro|prechorus)\}$/i.test(value))) {
+        output.push("{verse}");
+        hasSection = true;
+      }
+      output.push(insertChordsInLyric(rawLine, lines[i + 1]));
+      i += 1;
+      continue;
+    }
+
+    if (isChordLine(rawLine)) {
+      if (!hasSection && !output.some((value) => /^\{(?:verse|chorus|bridge|intro|outro|prechorus|instrumental|solo|break)\}$/i.test(value))) {
+        output.push("{verse}");
+        hasSection = true;
+      }
+
+      const chordOnlyLine = rawLine
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((chord) => `[${chord}]`)
+        .join(" ");
+
+      output.push(chordOnlyLine);
+      continue;
+    }
+
+    output.push(rawLine);
+  }
+
+  return output.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 // ─── Componente de línea con acordes ─────────────────────────────────────────
 
 function PreviewLine({ text, chords }: { text: string; chords: Array<{ note: string; pos: number }> }) {
@@ -183,6 +294,8 @@ function PreviewLine({ text, chords }: { text: string; chords: Array<{ note: str
 
 export default function SongModal({ isOpen, onClose, onSave, song, mode = "create" }: SongModalProps) {
   const [chordProText, setChordProText] = useState("");
+  const [stackedText, setStackedText] = useState("");
+  const [inputFormat, setInputFormat] = useState<InputFormat>("chordpro");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
@@ -225,10 +338,14 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
     if (!isOpen) return;
     if (mode === "edit" && song) {
       setChordProText(convertToChordPro(song));
+      setStackedText("");
+      setInputFormat("chordpro");
       setYoutubeUrl(song.youtubeUrl ?? "");
       setTagsInput(Array.isArray(song.tags) ? song.tags.join(", ") : "");
     } else {
       setChordProText("");
+      setStackedText("");
+      setInputFormat("stacked");
       setYoutubeUrl("");
       setTagsInput("");
     }
@@ -241,6 +358,17 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
 
   const hasContent = chordProText.trim().length > 0;
   const isValid = hasContent && (preview.title || preview.sections.length > 0);
+
+  const handleConvertStacked = () => {
+    const converted = convertStackedChordsToChordPro(stackedText);
+    if (!converted) {
+      alert("Pega primero la canción con acordes encima de la letra.");
+      return;
+    }
+    setChordProText(converted);
+    setInputFormat("chordpro");
+    setActiveTab("preview");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +383,8 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
 
   const handleClose = () => {
     setChordProText("");
+    setStackedText("");
+    setInputFormat("chordpro");
     setYoutubeUrl("");
     setTagsInput("");
     onClose();
@@ -272,7 +402,7 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
             <h2 className="text-xl font-bold text-gray-800">
               🎵 {mode === "edit" ? "Editar canción" : "Nueva canción"}
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Formato ChordPro — escribe y ve el resultado en tiempo real</p>
+            <p className="text-xs text-gray-500 mt-0.5">Pega ChordPro o acordes encima de la letra y revisa la vista previa</p>
           </div>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1">×</button>
         </div>
@@ -303,15 +433,43 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
 
               {/* Guía de formato */}
               <div className="px-4 pt-3 shrink-0">
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setInputFormat("stacked")}
+                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all ${
+                      inputFormat === "stacked"
+                        ? "bg-terracota text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Acordes sobre letra
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputFormat("chordpro")}
+                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all ${
+                      inputFormat === "chordpro"
+                        ? "bg-terracota text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    ChordPro
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowGuide((v) => !v)}
                   className="flex items-center gap-1.5 text-xs text-terracota font-semibold hover:underline"
                 >
-                  {showGuide ? "▼" : "▶"} Guía de formato ChordPro
+                  {showGuide ? "▼" : "▶"} Guía de formatos
                 </button>
                 {showGuide && (
                   <div className="mt-2 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-mono leading-5 text-gray-700 space-y-1">
+                    <div className="font-sans font-bold text-gray-700">Formato fácil:</div>
+                    <div><span className="text-green-600 font-bold">Bm G</span></div>
+                    <div>La única Razón de mi adoración</div>
+                    <div className="pt-1 border-t border-amber-200 font-sans font-bold text-gray-700">ChordPro:</div>
                     <div><span className="text-terracota font-bold">{"{title: Nombre}"}</span> — título de la canción</div>
                     <div><span className="text-terracota font-bold">{"{artist: Artista}"}</span> — artista</div>
                     <div><span className="text-terracota font-bold">{"{key: G}"}</span> — tonalidad (C, D, E, F, G, A, B + # o b)</div>
@@ -327,11 +485,40 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
 
               {/* Textarea principal */}
               <div className="flex-1 px-4 pb-2 min-h-0">
-                <textarea
-                  className="w-full h-full min-h-[260px] resize-none px-3 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-2 focus:ring-terracota/20 transition-all font-mono text-sm leading-5 text-gray-800 bg-gray-50"
-                  value={chordProText}
-                  onChange={(e) => setChordProText(e.target.value)}
-                  placeholder={`{title: Gran Es Tu Fidelidad}
+                {inputFormat === "stacked" ? (
+                  <div className="h-full flex flex-col gap-2">
+                    <textarea
+                      className="w-full flex-1 min-h-[260px] resize-none px-3 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-2 focus:ring-terracota/20 transition-all font-mono text-sm leading-5 text-gray-800 bg-gray-50"
+                      value={stackedText}
+                      onChange={(e) => setStackedText(e.target.value)}
+                      placeholder={`title: La única razón
+artist: Jesús Adrián Romero
+key: Bm
+
+Bm G
+La única Razón de mi adoración
+D A
+Eres tú mi Jesús
+Bm G
+El único motivo para vivir
+D A
+Eres tú Mi Señor`}
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleConvertStacked}
+                      className="w-full bg-terracota text-white py-2.5 rounded-xl font-bold hover:bg-terracota-dark transition-colors"
+                    >
+                      Convertir a ChordPro y previsualizar
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    className="w-full h-full min-h-[260px] resize-none px-3 py-3 border-2 border-gray-200 rounded-xl focus:border-terracota focus:ring-2 focus:ring-terracota/20 transition-all font-mono text-sm leading-5 text-gray-800 bg-gray-50"
+                    value={chordProText}
+                    onChange={(e) => setChordProText(e.target.value)}
+                    placeholder={`{title: Gran Es Tu Fidelidad}
 {artist: Thomas O. Chisholm}
 {key: G}
 
@@ -342,8 +529,9 @@ export default function SongModal({ isOpen, onClose, onSave, song, mode = "creat
 {chorus}
 [G]Grande es tu [C]fidelidad
 [G]Grande es tu [D]fidelidad`}
-                  spellCheck={false}
-                />
+                    spellCheck={false}
+                  />
+                )}
               </div>
 
               {/* Campos adicionales */}
