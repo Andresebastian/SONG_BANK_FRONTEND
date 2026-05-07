@@ -73,6 +73,35 @@ export const getSetLists = async () => {
   return await res.json();
 };
 
+export const getSongRankings = async () => {
+  const res = await fetch(`/api/sets/song-rankings`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return await res.json();
+};
+
+export const getSongReports = async (params?: { from?: string; to?: string }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.from) searchParams.append('from', params.from);
+  if (params?.to) searchParams.append('to', params.to);
+  const query = searchParams.toString();
+  const res = await fetch(`/api/sets/reports/songs${query ? `?${query}` : ''}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return await res.json();
+};
+
+export const rateSetSong = async (setId: string, songId: string, rating: number) => {
+  const res = await fetch(`/api/sets/${setId}/songs/${songId}/rating`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ rating }),
+  });
+  return await res.json();
+};
+
 export const createEvent = async (data: {
   name: string;
   date: string;
