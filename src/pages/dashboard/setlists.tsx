@@ -19,6 +19,8 @@ interface SongInSet {
   songId: Song;
   transposeKey: string;
   order: number;
+  rating?: number;
+  ratedAt?: string;
   _id: string;
 }
 

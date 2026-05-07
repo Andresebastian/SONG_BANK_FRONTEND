@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { searchSongsAdvanced } from "../utils/api";
+import { rateSetSong, searchSongsAdvanced } from "../utils/api";
 
 interface Song {
   _id: string;
@@ -13,6 +13,8 @@ interface SongInSet {
   songId: Song;
   transposeKey: string;
   order: number;
+  rating?: number;
+  ratedAt?: string;
   _id: string;
 }
 
@@ -30,14 +32,7 @@ interface SetList {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (setListData: {
-    date: string;
-    songs: {
-      songId: string;
-      transposeKey: string;
-      order: number;
-    }[];
-  }) => void;
+  onSave: (setListData: unknown) => void;
   setList?: SetList | null;
   mode?: "create" | "edit" | "view";
 }
@@ -59,9 +54,11 @@ export default function SetListModal({
     songId: string;
     transposeKey: string;
     order: number;
+    rating?: number;
   }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ratingSongId, setRatingSongId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   // Obtener token del localStorage solo en el cliente
@@ -94,7 +91,8 @@ export default function SetListModal({
       const convertedSongs = setList.songs.map(song => ({
         songId: song.songId._id,
         transposeKey: song.transposeKey,
-        order: song.order
+        order: song.order,
+        rating: song.rating,
       }));
       setSelectedSongs(convertedSongs);
     } else if (!setList && isOpen) {
@@ -146,6 +144,7 @@ export default function SetListModal({
       songId: song._id,
       transposeKey: song.key,
       order: newOrder,
+      rating: undefined,
     };
     setSelectedSongs([...selectedSongs, newSongInSet]);
   };
@@ -181,6 +180,34 @@ export default function SetListModal({
     ));
   };
 
+  const handleRateSong = async (songId: string, rating: number) => {
+    if (!setList?._id) return;
+    setRatingSongId(songId);
+    setError("");
+
+    try {
+      const result = await rateSetSong(setList._id, songId, rating);
+      if (result?.data?.songs) {
+        const ratedSong = result.data.songs.find((song: SongInSet) => song.songId._id === songId);
+        setSelectedSongs((prev) =>
+          prev.map((song) =>
+            song.songId === songId
+              ? { ...song, rating: ratedSong?.rating ?? rating }
+              : song
+          )
+        );
+        onSave(result.data);
+      } else {
+        setError(result?.message || "No se pudo guardar la calificación");
+      }
+    } catch (error) {
+      console.error("Error rating song:", error);
+      setError("Error de conexión al guardar la calificación");
+    } finally {
+      setRatingSongId(null);
+    }
+  };
+
   const handleSubmit = async () => {
     // Validaciones
     if (!token) {
@@ -206,10 +233,10 @@ export default function SetListModal({
       };
 
       const url = mode === "edit" 
-        ? `/api/set/${setList?._id}`
+        ? `/api/sets/${setList?._id}`
         : `/api/sets`;
       
-      const method = mode === "edit" ? "PUT" : "POST";
+      const method = mode === "edit" ? "PATCH" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -493,6 +520,39 @@ export default function SetListModal({
                                 <span className="text-xs text-gray-500">
                                   (Original: {song.key})
                                 </span>
+                              </div>
+                            )}
+
+                            {(mode === "view" || mode === "edit") && setList?._id && (
+                              <div className="mt-3 border-t border-gray-100 pt-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-700">Respuesta de la congregación</p>
+                                    <p className="text-xs text-gray-500">1 = cantó poco · 5 = cantó muy bien</p>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => {
+                                      const isActive = star <= (songInSet.rating ?? 0);
+                                      return (
+                                        <button
+                                          key={star}
+                                          type="button"
+                                          onClick={() => handleRateSong(songInSet.songId, star)}
+                                          disabled={ratingSongId === songInSet.songId}
+                                          className={`text-2xl leading-none transition-all duration-150 ${
+                                            isActive ? "text-yellow-400" : "text-gray-300 hover:text-yellow-300"
+                                          } disabled:opacity-60`}
+                                          title={`${star} estrella${star > 1 ? "s" : ""}`}
+                                        >
+                                          ★
+                                        </button>
+                                      );
+                                    })}
+                                    {songInSet.rating && (
+                                      <span className="ml-2 text-sm font-bold text-terracota">{songInSet.rating}/5</span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
