@@ -93,11 +93,31 @@ export const getSongReports = async (params?: { from?: string; to?: string }) =>
   return await res.json();
 };
 
+export type ArrangementSection = {
+  section: string;
+  order: number;
+  comment?: string;
+  repeat?: number;
+};
+
 export const rateSetSong = async (setId: string, songId: string, rating: number) => {
   const res = await fetch(`/api/sets/${setId}/songs/${songId}/rating`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify({ rating }),
+  });
+  return await res.json();
+};
+
+export const updateSetlistSongArrangement = async (
+  setId: string,
+  songId: string,
+  arrangementSections: ArrangementSection[],
+) => {
+  const res = await fetch(`/api/sets/${setId}/songs/${songId}/arrangement`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ arrangementSections }),
   });
   return await res.json();
 };

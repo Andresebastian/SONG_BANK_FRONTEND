@@ -1,13 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import LayoutDashboard from "../../../components/LayoutDashboard";
-import { getEvent, getSong, transposeSong, updateSong, updateSongChordPro } from "../../../utils/api";
+import {
+  ArrangementSection,
+  getEvent,
+  getSong,
+  transposeSong,
+  updateSetlistSongArrangement,
+  updateSong,
+  updateSongChordPro,
+} from "../../../utils/api";
 import SongModal from "../../../components/SongModal";
 
 interface SongInSet {
   songId: string;
   order: number;
   transposeKey: string;
+  arrangementSections?: ArrangementSection[];
   _id: string;
 }
 
@@ -60,6 +69,9 @@ export default function EventDetailPage() {
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
   const [showTransposeModal, setShowTransposeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showArrangementModal, setShowArrangementModal] = useState(false);
+  const [editingSections, setEditingSections] = useState<ArrangementSection[]>([]);
+  const [savingArrangement, setSavingArrangement] = useState(false);
   const [transposing, setTransposing] = useState(false);
   const [songDetails, setSongDetails] = useState<{[key: string]: {title: string, artist: string}}>({});
 
@@ -257,6 +269,75 @@ export default function EventDetailPage() {
         return "📝";
       default:
         return "❓";
+    }
+  };
+
+  const getSelectedSetlistSong = () => {
+    if (!event || !selectedSongId) return null;
+    return event.setId.songs.find((song) => song.songId === selectedSongId) || null;
+  };
+
+  const buildCurrentArrangement = (): ArrangementSection[] => {
+    if (!selectedSong) return [];
+    const existing = getSelectedSetlistSong()?.arrangementSections;
+    if (existing?.length) {
+      return [...existing].sort((a, b) => a.order - b.order);
+    }
+
+    const sectionNames = Array.from(
+      new Set(selectedSong.lyricsLines.map((line) => line.section || 'verse')),
+    );
+
+    return sectionNames.map((section, order) => ({
+      section,
+      order,
+      comment: '',
+      repeat: 1,
+    }));
+  };
+
+  const openArrangementModal = () => {
+    setEditingSections(buildCurrentArrangement());
+    setShowArrangementModal(true);
+  };
+
+  const moveEditingSection = (index: number, direction: -1 | 1) => {
+    setEditingSections((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(target, 0, item);
+      return next.map((section, order) => ({ ...section, order }));
+    });
+  };
+
+  const updateEditingComment = (index: number, comment: string) => {
+    setEditingSections((current) =>
+      current.map((section, currentIndex) =>
+        currentIndex === index ? { ...section, comment } : section,
+      ),
+    );
+  };
+
+  const saveArrangement = async () => {
+    if (!event?.setId?._id || !selectedSongId || savingArrangement) return;
+    setSavingArrangement(true);
+    try {
+      const response = await updateSetlistSongArrangement(
+        event.setId._id,
+        selectedSongId,
+        editingSections.map((section, order) => ({ ...section, order })),
+      );
+      setEvent((current) =>
+        current ? { ...current, setId: response.data as SetId } : current,
+      );
+      setShowArrangementModal(false);
+    } catch (error) {
+      console.error('Error al guardar estructura:', error);
+      alert('No se pudo guardar la estructura. Inténtalo de nuevo.');
+    } finally {
+      setSavingArrangement(false);
     }
   };
 
@@ -467,6 +548,12 @@ export default function EventDetailPage() {
                     </button>
                   </div>
 
+                  <button
+                    onClick={openArrangementModal}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
+                  >
+                    🧩 Estructura
+                  </button>
                   <button 
                     onClick={() => setShowTransposeModal(true)}
                     className="bg-blue-500 text-blanco px-4 py-2 rounded-xl font-medium hover:bg-blue-600 transition-all duration-200"
@@ -500,7 +587,28 @@ export default function EventDetailPage() {
                   if (!sections[section]) sections[section] = [];
                   sections[section].push({ ...line, originalIndex: index });
                 });
-                const sectionEntries = Object.entries(sections);
+                const baseSectionEntries = Object.entries(sections);
+                const savedArrangement = getSelectedSetlistSong()?.arrangementSections;
+                const arrangedSectionEntries = savedArrangement?.length
+                  ? [...savedArrangement]
+                      .sort((a, b) => a.order - b.order)
+                      .filter((item) => sections[item.section])
+                      .map((item) => [item.section, sections[item.section], item] as const)
+                  : baseSectionEntries.map(([name, lines], index) => [
+                      name,
+                      lines,
+                      { section: name, order: index, comment: '', repeat: 1 },
+                    ] as const);
+                const arrangedSectionNames = new Set(arrangedSectionEntries.map(([name]) => name));
+                baseSectionEntries.forEach(([name, lines]) => {
+                  if (!arrangedSectionNames.has(name)) {
+                    arrangedSectionEntries.push([
+                      name,
+                      lines,
+                      { section: name, order: arrangedSectionEntries.length, comment: '', repeat: 1 },
+                    ] as const);
+                  }
+                });
 
                 const renderLine = (text: string, chords: { note: string; index: number }[]) => {
                   const fc = getFontSizeClasses();
@@ -546,9 +654,9 @@ export default function EventDetailPage() {
                 return (
                   <>
                     {/* Barra de navegación de secciones */}
-                    {sectionEntries.length > 1 && (
+                    {arrangedSectionEntries.length > 1 && (
                       <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
-                        {sectionEntries.map(([name], idx) => (
+                        {arrangedSectionEntries.map(([name], idx) => (
                           <button
                             key={idx}
                             onClick={() => document.getElementById(`ev-section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -562,13 +670,24 @@ export default function EventDetailPage() {
 
                     {/* Secciones */}
                     <div className="space-y-6 mb-8">
-                      {sectionEntries.map(([sectionName, lines], sectionIndex) => (
+                      {arrangedSectionEntries.map(([sectionName, lines, arrangement], sectionIndex) => (
                         <div key={sectionIndex} id={`ev-section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
-                          <div className="flex items-center">
+                          <div className="flex items-center gap-2">
                             <h3 className="text-sm font-bold text-terracota bg-terracota/10 px-3 py-1.5 rounded-lg uppercase tracking-wide">
                               {sectionLabel(sectionName)}
                             </h3>
+                            {(arrangement.repeat ?? 1) > 1 && (
+                              <span className="text-xs font-bold text-terracota bg-terracota/10 px-2 py-1 rounded-lg">
+                                x{arrangement.repeat}
+                              </span>
+                            )}
                           </div>
+                          {arrangement.comment && (
+                            <div className="ml-4 bg-amber-50 border-l-4 border-terracota rounded-xl p-3 text-sm text-gray-700">
+                              <div className="text-xs font-bold text-terracota uppercase tracking-wide mb-1">Comentario</div>
+                              {arrangement.comment}
+                            </div>
+                          )}
                           <div className="space-y-4 ml-4">
                             {lines.map((line, lineIndex) => (
                               <div key={lineIndex} className="border-b border-gray-100 pb-4 last:border-b-0">
@@ -617,6 +736,73 @@ export default function EventDetailPage() {
               })()}
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* Modal para editar estructura del setlist */}
+      {showArrangementModal && selectedSong && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-blanco rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">🧩 Estructura del ensayo</h3>
+            <p className="text-gray-600 mb-6">
+              Estos cambios quedan guardados solo en este setlist. La canción original no se modifica.
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {editingSections.map((section, index) => (
+                <div key={`${section.section}-${index}`} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div className="text-xs text-gray-400 font-semibold">#{index + 1}</div>
+                      <div className="font-bold text-gray-800">{section.section}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => moveEditingSection(index, -1)}
+                        disabled={index === 0}
+                        className="w-9 h-9 rounded-lg bg-terracota text-white font-bold disabled:opacity-30"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveEditingSection(index, 1)}
+                        disabled={index === editingSections.length - 1}
+                        className="w-9 h-9 rounded-lg bg-terracota text-white font-bold disabled:opacity-30"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                  <textarea
+                    value={section.comment ?? ''}
+                    onChange={(e) => updateEditingComment(index, e.target.value)}
+                    placeholder="Comentario para músicos/coristas en esta sección..."
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracota/30 resize-none"
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowArrangementModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
+                disabled={savingArrangement}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveArrangement}
+                className="flex-1 bg-terracota text-blanco py-3 rounded-xl font-semibold hover:bg-terracota-dark transition-all duration-200 disabled:opacity-50"
+                disabled={savingArrangement}
+              >
+                {savingArrangement ? '⏳ Guardando...' : 'Guardar estructura'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
