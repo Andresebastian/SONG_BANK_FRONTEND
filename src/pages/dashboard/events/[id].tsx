@@ -655,23 +655,25 @@ export default function EventDetailPage() {
                   <>
                     {/* Barra de navegación de secciones */}
                     {arrangedSectionEntries.length > 1 && (
-                      <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-100">
-                        {arrangedSectionEntries.map(([name], idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => document.getElementById(`ev-section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
-                          >
-                            {sectionLabel(name)}
-                          </button>
-                        ))}
+                      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-6 border-b border-gray-100 shadow-sm">
+                        <div className="flex flex-wrap gap-2">
+                          {arrangedSectionEntries.map(([name], idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => document.getElementById(`ev-section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-terracota/10 text-terracota hover:bg-terracota hover:text-white transition-all duration-200"
+                            >
+                              {sectionLabel(name)}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
                     {/* Secciones */}
                     <div className="space-y-6 mb-8">
                       {arrangedSectionEntries.map(([sectionName, lines, arrangement], sectionIndex) => (
-                        <div key={sectionIndex} id={`ev-section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '80px' }}>
+                        <div key={sectionIndex} id={`ev-section-${sectionIndex}`} className="space-y-4" style={{ scrollMarginTop: '96px' }}>
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-bold text-terracota bg-terracota/10 px-3 py-1.5 rounded-lg uppercase tracking-wide">
                               {sectionLabel(sectionName)}
